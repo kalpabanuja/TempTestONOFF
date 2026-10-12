@@ -82,7 +82,8 @@
         <span class="nav-emblem">⚔</span>
         <span class="nav-title">VALHEIM ADMIN</span>
       </div>
-      <div class="nav-tabs">
+      <!-- Nav tabs (disabled for now)
+      <div class="nav-tabs" style="display: none;">
         <button class="nav-tab active" id="tabBtnDashboard" onclick="switchTab('dashboard')">
           <span class="tab-icon">⚙</span>
           <span class="tab-text">DASHBOARD</span>
@@ -92,6 +93,7 @@
           <span class="tab-text">WORLD MAP</span>
         </button>
       </div>
+      -->
       <div class="nav-actions">
         <div class="status-badge" id="statusBadge">
           <span class="status-dot" id="statusDot"></span>
@@ -104,9 +106,6 @@
     </nav>
 
     <main class="dashboard">
-
-      <!-- ══════════ TAB 1: DASHBOARD CONTENT ══════════ -->
-      <div id="tabContentDashboard" class="tab-pane active">
 
       <!-- Server Control Panel -->
       <section class="panel control-panel">
@@ -229,85 +228,12 @@
           <span class="log-stream-status" id="logStreamStatus">● Connecting</span>
         </div>
       </section>
-      </div><!-- /#tabContentDashboard -->
 
-      <!-- ══════════ TAB 2: WORLD MAP CONTENT ══════════ -->
-      <div id="tabContentMap" class="tab-pane">
-        <section class="panel map-panel">
-          <div class="panel-header map-header">
-            <div class="map-title-wrap">
-              <h2 class="panel-title">
-                <span class="panel-icon">🗺</span> World Map Explorer
-              </h2>
-              <span class="map-subtitle" id="mapWorldTitle">World: Loading...</span>
-            </div>
-            <div class="map-actions">
-              <button class="btn-secondary" id="btnDetectSeed" onclick="detectServerSeed()" title="Auto-detect seed from server save files">
-                ⚡ Detect Seed
-              </button>
-              <button class="btn-secondary" id="btnCopyMapLink" onclick="copyMapLink()" title="Copy map URL">
-                ⧉ Copy Link
-              </button>
-              <button class="btn-secondary highlight" id="btnOpenMapExt" onclick="openMapExternal()" title="Open full map in new browser tab">
-                ↗ New Tab
-              </button>
-            </div>
-          </div>
-
-          <!-- Seed Controls & Realm Info -->
-          <div class="map-control-bar">
-            <div class="seed-input-wrap">
-              <label for="mapSeedInput" class="seed-label">WORLD SEED</label>
-              <div class="seed-input-box">
-                <span class="seed-rune">ᛟ</span>
-                <input
-                  id="mapSeedInput"
-                  type="text"
-                  class="field-input seed-input"
-                  placeholder="Enter or detect world seed..."
-                  spellcheck="false"
-                />
-                <button class="btn-seed-apply" id="btnApplySeed" onclick="applyCustomSeed()">
-                  Apply Seed
-                </button>
-              </div>
-            </div>
-
-            <div class="map-badges">
-              <div class="map-badge" title="Active World Name">
-                <span class="badge-label">REALM</span>
-                <span class="badge-val" id="badgeWorldName">—</span>
-              </div>
-              <div class="map-badge" title="Active World Seed">
-                <span class="badge-label">ACTIVE SEED</span>
-                <span class="badge-val mono" id="badgeActiveSeed">—</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Embedded Map Frame Container -->
-          <div class="map-frame-wrapper" id="mapFrameWrapper">
-            <div class="map-loading-overlay" id="mapLoadingOverlay">
-              <div class="spinner"></div>
-              <span>Generating World Fog of War...</span>
-            </div>
-            <iframe
-              id="worldMapFrame"
-              class="world-map-frame"
-              src="about:blank"
-              title="Valheim World Map"
-              allow="fullscreen"
-              loading="lazy"
-            ></iframe>
-          </div>
-
-          <div class="map-footer">
-            <span class="map-notice">
-              ⚔ Interactive generation powered by <strong>Valheim World Generator</strong>. Explore terrain, boss altars, traders, and crypts.
-            </span>
-          </div>
-        </section>
-      </div><!-- /#tabContentMap -->
+      <!-- World Map (disabled for now)
+      <div id="tabContentMap" class="tab-pane" style="display: none;">
+        ...
+      </div>
+      -->
 
     </main>
   </div>
