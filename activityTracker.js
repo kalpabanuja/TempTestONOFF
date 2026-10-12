@@ -471,6 +471,38 @@ class ActivityTracker {
       });
     }
 
+    // 12. Item Spawns & Console Cheats (SUSPICIOUS)
+    const spawnMatch = line.match(/(?:Player\s+)?([A-Za-z0-9_]+)\s+(?:spawned|used console to spawn|cheated|spawn command:)\s+(.+)/i);
+    if (spawnMatch) {
+      const name = spawnMatch[1].trim();
+      const item = spawnMatch[2].trim();
+      this.registerPlayer(name, { online: true, timestamp });
+      return this.recordEvent({
+        player: name,
+        type: 'suspicious',
+        severity: 'danger',
+        title: 'Item Spawn / Cheat Detected',
+        details: `Spawned: ${item}`,
+        raw: line,
+        timestamp,
+      });
+    }
+
+    // 13. ServerCharacters / AntiCheat Foreign Item Alerts (SUSPICIOUS)
+    if (/AntiCheat|ServerCharacters|Illegal item|Foreign item|Inventory mismatch|blocked spawn|Cheat detected/i.test(line)) {
+      const matchPlayer = line.match(/(?:Player|from|character)\s+([A-Za-z0-9_]+)/i);
+      const player = matchPlayer ? matchPlayer[1] : 'Security Alert';
+      return this.recordEvent({
+        player,
+        type: 'suspicious',
+        severity: 'danger',
+        title: 'Foreign Item / AntiCheat Violation',
+        details: line.slice(0, 250),
+        raw: line,
+        timestamp,
+      });
+    }
+
     return null;
   }
 
