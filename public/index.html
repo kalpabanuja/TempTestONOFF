@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valheim Admin Panel</title>
+  <meta name="description" content="Secure admin panel for managing your Valheim dedicated server running in Docker." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Particle canvas background -->
+  <canvas id="particleCanvas"></canvas>
+
+  <!-- ══════════ LOGIN VIEW ══════════ -->
+  <div id="loginView" class="view active">
+    <div class="login-container">
+      <div class="rune-corner tl"></div>
+      <div class="rune-corner tr"></div>
+      <div class="rune-corner bl"></div>
+      <div class="rune-corner br"></div>
+
+      <div class="login-logo">
+        <div class="logo-emblem">⚔</div>
+        <h1 class="login-title">VALHEIM</h1>
+        <span class="login-subtitle">ADMIN PORTAL</span>
+      </div>
+
+      <form id="loginForm" autocomplete="off">
+        <div class="field-group">
+          <label for="loginUsername" class="field-label">USERNAME</label>
+          <div class="input-wrap">
+            <span class="input-icon">᛭</span>
+            <input
+              id="loginUsername"
+              type="text"
+              class="field-input"
+              placeholder="Enter your username"
+              autocomplete="off"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="loginPassword" class="field-label">PASSWORD</label>
+          <div class="input-wrap">
+            <span class="input-icon">ᚱ</span>
+            <input
+              id="loginPassword"
+              type="password"
+              class="field-input"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+        </div>
+
+        <div id="loginError" class="login-error hidden">
+          <span>⚠</span> <span id="loginErrorText">Invalid credentials</span>
+        </div>
+
+        <button id="loginBtn" type="submit" class="btn-primary">
+          <span class="btn-rune">ᚠ</span>
+          <span class="btn-text">ENTER THE REALM</span>
+          <span class="btn-spinner hidden">◌</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════ DASHBOARD VIEW ══════════ -->
+  <div id="dashboardView" class="view">
+
+    <!-- Top navbar -->
+    <nav class="navbar">
+      <div class="nav-brand">
+        <span class="nav-emblem">⚔</span>
+        <span class="nav-title">VALHEIM ADMIN</span>
+      </div>
+      <div class="nav-actions">
+        <div class="status-badge" id="statusBadge">
+          <span class="status-dot" id="statusDot"></span>
+          <span class="status-label" id="statusLabel">Checking...</span>
+        </div>
+        <button id="logoutBtn" class="btn-logout" title="Logout">
+          ⎋ Logout
+        </button>
+      </div>
+    </nav>
+
+    <main class="dashboard">
+
+      <!-- Server Control Panel -->
+      <section class="panel control-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span class="panel-icon">⚙</span> Server Control
+          </h2>
+          <div class="divider-rune">᛬</div>
+        </div>
+        <div class="control-grid">
+
+          <button id="btnStart" class="ctrl-btn start" onclick="serverAction('start')">
+            <span class="ctrl-icon">▶</span>
+            <span class="ctrl-label">START</span>
+            <span class="ctrl-sub">Boot the server</span>
+          </button>
+
+          <button id="btnStop" class="ctrl-btn stop" onclick="serverAction('stop')">
+            <span class="ctrl-icon">■</span>
+            <span class="ctrl-label">STOP</span>
+            <span class="ctrl-sub">Shut down safely</span>
+          </button>
+
+          <button id="btnRestart" class="ctrl-btn restart" onclick="serverAction('restart')">
+            <span class="ctrl-icon">↺</span>
+            <span class="ctrl-label">RESTART</span>
+            <span class="ctrl-sub">Cycle the server</span>
+          </button>
+
+        </div>
+
+        <!-- Toast notification -->
+        <div id="actionToast" class="action-toast hidden">
+          <span id="actionToastText"></span>
+        </div>
+      </section>
+
+      <!-- Server Info Stats Bar -->
+      <section class="panel info-panel">
+        <div class="info-grid">
+
+          <div class="info-stat" id="statPlayers">
+            <span class="info-stat-icon">👥</span>
+            <div class="info-stat-body">
+              <span class="info-stat-label">PLAYERS ONLINE</span>
+              <span class="info-stat-value" id="infoPlayerCount">—</span>
+            </div>
+          </div>
+
+          <div class="info-divider"></div>
+
+          <div class="info-stat" id="statJoinCode">
+            <span class="info-stat-icon">🔑</span>
+            <div class="info-stat-body">
+              <span class="info-stat-label">JOIN CODE</span>
+              <span class="info-stat-value mono" id="infoJoinCode">—</span>
+            </div>
+            <button class="btn-copy" id="btnCopyJoin" title="Copy join code" onclick="copyJoinCode()">
+              ⧉
+            </button>
+          </div>
+
+          <div class="info-divider"></div>
+
+          <div class="info-stat">
+            <span class="info-stat-icon">🌐</span>
+            <div class="info-stat-body">
+              <span class="info-stat-label">SERVER ADDRESS</span>
+              <span class="info-stat-value mono" id="infoAddress">172.105.121.226:2456</span>
+            </div>
+            <button class="btn-copy" title="Copy address" onclick="copyAddress()">
+              ⧉
+            </button>
+          </div>
+
+          <div class="info-divider"></div>
+
+          <div class="info-stat">
+            <span class="info-stat-icon">🕐</span>
+            <div class="info-stat-body">
+              <span class="info-stat-label">LAST REFRESHED</span>
+              <span class="info-stat-value" id="infoLastRefresh">—</span>
+            </div>
+            <button class="btn-copy" title="Refresh now" onclick="fetchServerInfo()">
+              ↺
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Server Logs Panel -->
+      <section class="panel logs-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span class="panel-icon">📜</span> Server Logs
+          </h2>
+          <div class="log-actions">
+            <button id="btnToggleLogs" class="btn-secondary" onclick="toggleLogs()">
+              ⏸ Pause
+            </button>
+            <button class="btn-secondary" onclick="clearLogs()">
+              ✕ Clear
+            </button>
+            <button class="btn-secondary" onclick="downloadLogs()">
+              ↓ Save
+            </button>
+          </div>
+        </div>
+
+        <div id="logContainer" class="log-container">
+          <div class="log-connecting">
+            <div class="spinner"></div>
+            <span>Connecting to log stream...</span>
+          </div>
+        </div>
+
+        <div class="log-footer">
+          <span id="logCount" class="log-count">0 lines</span>
+          <span class="log-stream-status" id="logStreamStatus">● Connecting</span>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  valheim:
+    image: lloesche/valheim-server
+    container_name: valheim-server
+    cap_add:
+      - SYS_NICE
+    restart: always
+    ports:
+      - "2456-2457:2456-2457/udp"
+    environment:
+      - SERVER_NAME=Test 1
+      - WORLD_NAME=test2
+      - SERVER_PASS=test3
+      - SERVER_PUBLIC=1
+      # Set to true if players connect via Join Codes or cross-platform clients
+      - CROSSPLAY=true
+      - UPDATE_CRON=0 */15 * * *
+      - BACKUPS_CRON=0 0 * * *
+    volumes:
+      - ./valheim-config:/config
