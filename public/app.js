@@ -204,7 +204,13 @@ function updateInfoBar(data) {
   // Player count
   const playerEl = document.getElementById('infoPlayerCount');
   const count = typeof data.playerCount === 'number' ? data.playerCount : 0;
-  playerEl.textContent = count === 0 ? '0 (empty)' : `${count} online`;
+  if (count === 0) {
+    playerEl.textContent = '0 (empty)';
+  } else if (Array.isArray(data.players) && data.players.length > 0) {
+    playerEl.textContent = `${count} online (${data.players.join(', ')})`;
+  } else {
+    playerEl.textContent = `${count} online`;
+  }
   playerEl.classList.toggle('has-players', count > 0);
 
   // Join code

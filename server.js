@@ -19,9 +19,20 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ─── Live server state (updated by log watcher) ─────────────────────────────────
+// ─── Helper: Run docker command ───────────────────────────────────────────────
+function dockerCmd(args) {
+  return new Promise((resolve, reject) => {
+    exec(`docker ${args}`, (error, stdout, stderr) => {
+      if (error) return reject(stderr || error.message);
+      resolve(stdout.trim());
+    });
+  });
+}
+
+// ─── Live server state (updated by log watcher & status queries) ───────────────
 const liveState = {
   playerCount: 0,
+  players: [],
   joinCode: null,
   lastEvent: null,   // e.g. 'player_join', 'player_leave', 'server_start'
 };
@@ -36,52 +47,163 @@ function broadcastInfo(extra = {}) {
   }
 }
 
+// ─── Authoritative Server & Player Info Query ─────────────────────────────────
+async function getAccurateServerInfo() {
+  let joinCode = liveState.joinCode;
+  let playerCount = null;
+  let playersList = [];
+
+  // 1. Try valheim-status inside the container (authoritative Steam A2S query)
+  try {
+    const raw = await dockerCmd(`exec ${VALHEIM_CONTAINER} valheim-status`);
+    const status = JSON.parse(raw);
+    if (status && typeof status.player_count === 'number' && !status.error) {
+      playerCount = status.player_count;
+      if (Array.isArray(status.players)) {
+        playersList = status.players.map((p) => p.name).filter(Boolean);
+      }
+    }
+  } catch (_) {
+    // valheim-status not available or query port timed out — fall back to log parsing
+  }
+
+  // 2. Read recent logs for Join Code (and player count fallback if query port did not answer)
+  try {
+    const logs = await new Promise((resolve) => {
+      exec(
+        `docker logs --tail 2000 ${VALHEIM_CONTAINER} 2>&1`,
+        { maxBuffer: 10 * 1024 * 1024 },
+        (err, stdout) => resolve(stdout || '')
+      );
+    });
+
+    const lines = logs.split('\n');
+
+    // Extract Join Code (scan backwards for latest)
+    const joinCodeRegex = /join\s*code[:\s]+([A-Z0-9]{6,8})/i;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const m = lines[i].match(joinCodeRegex);
+      if (m) {
+        joinCode = m[1].toUpperCase();
+        break;
+      }
+    }
+
+    // Fallback: Accurate log parser with death filtering and name deduplication
+    if (playerCount === null) {
+      let startIdx = 0;
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (/DungeonDB Start|Game server connected|Valheim version/i.test(lines[i])) {
+          startIdx = i;
+          break;
+        }
+      }
+
+      const sessionLines = lines.slice(startIdx);
+      const onlinePlayers = new Set();
+
+      for (const line of sessionLines) {
+        // Player join/spawn: ignore death (0:0)
+        const joinMatch = line.match(/Got character ZDOID from\s+(.+?)\s*:\s*(?!0:0)([-0-9]+:[-0-9]+)/i);
+        if (joinMatch) {
+          const name = joinMatch[1].trim();
+          if (name) onlinePlayers.add(name);
+        }
+
+        // Disconnect: remove from set
+        if (/Closing socket|Disposing socket|Destroying abandoned non persistent zdo/i.test(line)) {
+          if (onlinePlayers.size > 0) {
+            const first = onlinePlayers.values().next().value;
+            onlinePlayers.delete(first);
+          }
+        }
+      }
+
+      playerCount = onlinePlayers.size;
+      playersList = Array.from(onlinePlayers);
+    }
+  } catch (_) {}
+
+  return {
+    joinCode: joinCode || liveState.joinCode,
+    playerCount: playerCount !== null ? playerCount : liveState.playerCount,
+    players: playersList
+  };
+}
+
 // ─── Log Watcher: tails docker logs and reacts to key events ─────────────────────
 let watcherProcess = null;
 
 function startLogWatcher() {
-  // Kill any previous watcher
   if (watcherProcess) { try { watcherProcess.kill(); } catch (_) {} }
 
   console.log(`[watcher] Starting log watcher for container: ${VALHEIM_CONTAINER}`);
 
+  // Initial sync on watcher start
+  getAccurateServerInfo().then((info) => {
+    liveState.playerCount = info.playerCount;
+    if (info.joinCode) liveState.joinCode = info.joinCode;
+    liveState.players = info.players;
+    broadcastInfo();
+  }).catch(() => {});
+
+  // Follow NEW logs from now on (--tail 0 to prevent replaying past lines)
   watcherProcess = spawn('docker', [
-    'logs', '--follow', '--tail', '100', '--timestamps', VALHEIM_CONTAINER
+    'logs', '--follow', '--tail', '0', '--timestamps', VALHEIM_CONTAINER
   ]);
+
+  // Debounced sync function to fetch authoritative status when a log event happens
+  let syncTimer = null;
+  const triggerSync = (event) => {
+    liveState.lastEvent = event;
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = setTimeout(async () => {
+      try {
+        const info = await getAccurateServerInfo();
+        liveState.playerCount = info.playerCount;
+        if (info.joinCode) liveState.joinCode = info.joinCode;
+        liveState.players = info.players;
+        broadcastInfo();
+      } catch (_) {}
+    }, 600);
+  };
 
   const processLine = (line) => {
     if (!line.trim()) return;
 
-    // ── Server start / restart detected ────────────────────────────────────
+    // Server start / restart detected
     if (/DungeonDB Start|Game server connected|Valheim version/i.test(line)) {
       liveState.playerCount = 0;
+      liveState.players = [];
       liveState.lastEvent = 'server_start';
       console.log('[watcher] Server start detected — player count reset');
       broadcastInfo();
+      triggerSync('server_start');
+      return;
     }
 
-    // ── Join code detected ────────────────────────────────────────────────
+    // Join code detected
     const joinMatch = line.match(/join\s*code[:\s]+([A-Z0-9]{6,8})/i);
     if (joinMatch) {
       liveState.joinCode = joinMatch[1].toUpperCase();
       console.log(`[watcher] Join code detected: ${liveState.joinCode}`);
       broadcastInfo();
+      return;
     }
 
-    // ── Player joined ───────────────────────────────────────────────────────
-    if (/Got character ZDOID/i.test(line)) {
-      liveState.playerCount++;
-      liveState.lastEvent = 'player_join';
-      console.log(`[watcher] Player joined — count: ${liveState.playerCount}`);
-      broadcastInfo();
+    // Player joined (ignore death 0:0)
+    const playerJoin = line.match(/Got character ZDOID from\s+(.+?)\s*:\s*(?!0:0)([-0-9]+:[-0-9]+)/i);
+    if (playerJoin) {
+      console.log(`[watcher] Player join/spawn: ${playerJoin[1]}`);
+      triggerSync('player_join');
+      return;
     }
 
-    // ── Player left ─────────────────────────────────────────────────────────
-    if (/Closing socket/i.test(line)) {
-      liveState.playerCount = Math.max(0, liveState.playerCount - 1);
-      liveState.lastEvent = 'player_leave';
-      console.log(`[watcher] Player left — count: ${liveState.playerCount}`);
-      broadcastInfo();
+    // Player left
+    if (/Closing socket|Disposing socket|Destroying abandoned non persistent zdo/i.test(line)) {
+      console.log('[watcher] Player disconnect detected');
+      triggerSync('player_leave');
+      return;
     }
   };
 
@@ -90,7 +212,6 @@ function startLogWatcher() {
 
   watcherProcess.on('close', (code) => {
     console.log(`[watcher] Log watcher closed (code ${code}). Retrying in 10s...`);
-    // Auto-restart watcher — container may be stopped, retry when it comes back up
     setTimeout(startLogWatcher, 10000);
   });
 
@@ -112,16 +233,6 @@ function requireAuth(req, res, next) {
     if (err) return res.status(403).json({ error: 'Invalid or expired token' });
     req.user = user;
     next();
-  });
-}
-
-// ─── Helper: Run docker command ───────────────────────────────────────────────
-function dockerCmd(args) {
-  return new Promise((resolve, reject) => {
-    exec(`docker ${args}`, (error, stdout, stderr) => {
-      if (error) return reject(stderr || error.message);
-      resolve(stdout.trim());
-    });
   });
 }
 
@@ -188,55 +299,19 @@ app.post('/api/server/restart', requireAuth, async (req, res) => {
 });
 
 // ─── GET /api/info (player count + join code) ───────────────────────────────
-// Parses recent docker logs from the lloesche/valheim-server image.
-// Join code:  logged as "Session \"<name>\" with join code XXXXXX"
-// Players:    tracked via "Got character ZDOID" (join) vs "Closing socket" (leave)
 app.get('/api/info', requireAuth, async (req, res) => {
   try {
-    // Pull last 3000 lines of logs – enough to capture recent session data
-    const logs = await new Promise((resolve) => {
-      exec(
-        `docker logs --tail 3000 ${VALHEIM_CONTAINER} 2>&1`,
-        { maxBuffer: 10 * 1024 * 1024 },
-        (err, stdout) => resolve(stdout || '')
-      );
-    });
-
-    const lines = logs.split('\n');
-
-    // ── Join code ────────────────────────────────────────────────────────────
-    // lloesche image logs: "Session \"My Server\" registered with join code 123456"
-    // or:                  "join code: 123456"
-    let joinCode = null;
-    const joinCodeRegex = /join\s*code[:\s]+([A-Z0-9]{6,8})/i;
-    // Scan in reverse to get the most recent one
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const m = lines[i].match(joinCodeRegex);
-      if (m) { joinCode = m[1].toUpperCase(); break; }
-    }
-
-    // ── Player count ──────────────────────────────────────────────────────────
-    // Find the last server startup marker, then count joins/leaves after it.
-    // Startup markers in lloesche image:
-    //   "Game server connected"  OR  "DungeonDB Start"
-    let startIdx = 0;
-    for (let i = lines.length - 1; i >= 0; i--) {
-      if (/DungeonDB Start|Game server connected|Valheim version/i.test(lines[i])) {
-        startIdx = i;
-        break;
-      }
-    }
-
-    const sessionLines = lines.slice(startIdx);
-    let players = 0;
-    for (const line of sessionLines) {
-      if (/Got character ZDOID/i.test(line)) players++;
-      if (/Closing socket/i.test(line)) players = Math.max(0, players - 1);
-    }
-
-    res.json({ joinCode, playerCount: players });
+    const info = await getAccurateServerInfo();
+    liveState.playerCount = info.playerCount;
+    if (info.joinCode) liveState.joinCode = info.joinCode;
+    liveState.players = info.players;
+    res.json(info);
   } catch (err) {
-    res.json({ joinCode: null, playerCount: 0 });
+    res.json({
+      joinCode: liveState.joinCode,
+      playerCount: liveState.playerCount,
+      players: liveState.players || []
+    });
   }
 });
 
@@ -314,5 +389,21 @@ app.listen(PORT, '0.0.0.0', () => {
 
   // Start watching docker logs immediately
   startLogWatcher();
+
+  // Periodic background sync (every 30s) to keep ground truth accurate
+  setInterval(async () => {
+    try {
+      const info = await getAccurateServerInfo();
+      const changed =
+        info.playerCount !== liveState.playerCount ||
+        (info.joinCode && info.joinCode !== liveState.joinCode);
+      if (changed) {
+        liveState.playerCount = info.playerCount;
+        if (info.joinCode) liveState.joinCode = info.joinCode;
+        liveState.players = info.players;
+        broadcastInfo();
+      }
+    } catch (_) {}
+  }, 30000);
 });
 
