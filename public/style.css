@@ -662,6 +662,14 @@ html, body {
 .btn-copy:hover { border-color: var(--gold-dim); color: var(--gold-bright); background: rgba(200,131,42,0.08); }
 .btn-copy.copied { border-color: var(--green); color: var(--green); }
 
+/* Flash animation on player join/leave events */
+.info-panel.info-flash {
+  border-color: var(--gold-mid);
+  box-shadow: var(--shadow-card), 0 0 20px rgba(200, 131, 42, 0.3);
+  transition: border-color 0.1s, box-shadow 0.1s;
+}
+
+
 /* ─── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 600px) {
   .control-grid { grid-template-columns: 1fr; }

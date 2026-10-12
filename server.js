@@ -19,6 +19,87 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ─── Live server state (updated by log watcher) ─────────────────────────────────
+const liveState = {
+  playerCount: 0,
+  joinCode: null,
+  lastEvent: null,   // e.g. 'player_join', 'player_leave', 'server_start'
+};
+
+// Connected /api/events SSE clients
+const eventClients = new Set();
+
+function broadcastInfo(extra = {}) {
+  const payload = JSON.stringify({ ...liveState, ...extra });
+  for (const res of eventClients) {
+    res.write(`event: info\ndata: ${payload}\n\n`);
+  }
+}
+
+// ─── Log Watcher: tails docker logs and reacts to key events ─────────────────────
+let watcherProcess = null;
+
+function startLogWatcher() {
+  // Kill any previous watcher
+  if (watcherProcess) { try { watcherProcess.kill(); } catch (_) {} }
+
+  console.log(`[watcher] Starting log watcher for container: ${VALHEIM_CONTAINER}`);
+
+  watcherProcess = spawn('docker', [
+    'logs', '--follow', '--tail', '100', '--timestamps', VALHEIM_CONTAINER
+  ]);
+
+  const processLine = (line) => {
+    if (!line.trim()) return;
+
+    // ── Server start / restart detected ────────────────────────────────────
+    if (/DungeonDB Start|Game server connected|Valheim version/i.test(line)) {
+      liveState.playerCount = 0;
+      liveState.lastEvent = 'server_start';
+      console.log('[watcher] Server start detected — player count reset');
+      broadcastInfo();
+    }
+
+    // ── Join code detected ────────────────────────────────────────────────
+    const joinMatch = line.match(/join\s*code[:\s]+([A-Z0-9]{6,8})/i);
+    if (joinMatch) {
+      liveState.joinCode = joinMatch[1].toUpperCase();
+      console.log(`[watcher] Join code detected: ${liveState.joinCode}`);
+      broadcastInfo();
+    }
+
+    // ── Player joined ───────────────────────────────────────────────────────
+    if (/Got character ZDOID/i.test(line)) {
+      liveState.playerCount++;
+      liveState.lastEvent = 'player_join';
+      console.log(`[watcher] Player joined — count: ${liveState.playerCount}`);
+      broadcastInfo();
+    }
+
+    // ── Player left ─────────────────────────────────────────────────────────
+    if (/Closing socket/i.test(line)) {
+      liveState.playerCount = Math.max(0, liveState.playerCount - 1);
+      liveState.lastEvent = 'player_leave';
+      console.log(`[watcher] Player left — count: ${liveState.playerCount}`);
+      broadcastInfo();
+    }
+  };
+
+  watcherProcess.stdout.on('data', (data) => data.toString().split('\n').forEach(processLine));
+  watcherProcess.stderr.on('data', (data) => data.toString().split('\n').forEach(processLine));
+
+  watcherProcess.on('close', (code) => {
+    console.log(`[watcher] Log watcher closed (code ${code}). Retrying in 10s...`);
+    // Auto-restart watcher — container may be stopped, retry when it comes back up
+    setTimeout(startLogWatcher, 10000);
+  });
+
+  watcherProcess.on('error', (err) => {
+    console.error('[watcher] Spawn error:', err.message);
+    setTimeout(startLogWatcher, 10000);
+  });
+}
+
 // ─── Middleware: Auth ─────────────────────────────────────────────────────────
 // SSE (EventSource) cannot send custom headers, so we also accept ?token= query param
 function requireAuth(req, res, next) {
@@ -159,6 +240,27 @@ app.get('/api/info', requireAuth, async (req, res) => {
   }
 });
 
+// ─── GET /api/events (SSE — instant info push) ───────────────────────────────────────
+app.get('/api/events', requireAuth, (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  // Send current state immediately so the page loads with fresh data
+  res.write(`event: info\ndata: ${JSON.stringify(liveState)}\n\n`);
+
+  // Send a heartbeat every 25s to keep connection alive through proxies
+  const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 25000);
+
+  eventClients.add(res);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    eventClients.delete(res);
+  });
+});
+
 // ─── GET /api/logs (SSE streaming) ────────────────────────────────────────────
 app.get('/api/logs', requireAuth, (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -209,4 +311,8 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   Network: http://<server-ip>:${PORT}`);
   console.log(`   Container: ${VALHEIM_CONTAINER}`);
   console.log(`   Login: ${ADMIN_USERNAME} / ${ADMIN_PASSWORD_PLAIN}\n`);
+
+  // Start watching docker logs immediately
+  startLogWatcher();
 });
+

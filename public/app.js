@@ -150,6 +150,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 function logout() {
   clearSession();
   stopLogStream();
+  stopEventStream();
   clearInterval(statusPollInterval);
   clearInterval(infoInterval);
   showView('login');
@@ -163,10 +164,9 @@ document.getElementById('logoutBtn').addEventListener('click', logout);
 function initDashboard() {
   showView('dashboard');
   fetchStatus();
-  fetchServerInfo();
   statusPollInterval = setInterval(fetchStatus, 10000);
-  infoInterval = setInterval(fetchServerInfo, 30000); // refresh info every 30s
-  startLogStream();
+  startEventStream();   // live push for player count + join code
+  startLogStream();     // live log tail
 }
 
 // ─── Status ───────────────────────────────────────────────────────────────────
@@ -197,27 +197,70 @@ async function fetchStatus() {
 
 // ─── Server Info (players + join code) ───────────────────────────────────────
 let infoInterval = null;
+let infoEventSource = null;
 
+// Shared render function — called by both the SSE event stream and manual fetch
+function updateInfoBar(data) {
+  // Player count
+  const playerEl = document.getElementById('infoPlayerCount');
+  const count = typeof data.playerCount === 'number' ? data.playerCount : 0;
+  playerEl.textContent = count === 0 ? '0 (empty)' : `${count} online`;
+  playerEl.classList.toggle('has-players', count > 0);
+
+  // Join code
+  const joinEl = document.getElementById('infoJoinCode');
+  joinEl.textContent = data.joinCode || 'Not found in logs';
+  joinEl.dataset.code = data.joinCode || '';
+
+  // Last refreshed timestamp
+  const now = new Date();
+  document.getElementById('infoLastRefresh').textContent =
+    now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  // Brief flash on player join/leave events
+  if (data.lastEvent === 'player_join' || data.lastEvent === 'player_leave') {
+    const panel = document.querySelector('.info-panel');
+    panel.classList.add('info-flash');
+    setTimeout(() => panel.classList.remove('info-flash'), 600);
+  }
+}
+
+// Live SSE connection — backend pushes instantly when events happen
+function startEventStream() {
+  stopEventStream();
+  infoEventSource = new EventSource(`/api/events?token=${encodeURIComponent(authToken)}`);
+
+  // Instant update whenever the backend detects a player/server event
+  infoEventSource.addEventListener('info', (e) => {
+    try { updateInfoBar(JSON.parse(e.data)); } catch (_) {}
+  });
+
+  infoEventSource.onerror = () => {
+    // SSE disconnected — fall back to polling every 15s until reconnected
+    if (!infoInterval) {
+      infoInterval = setInterval(fetchServerInfo, 15000);
+    }
+  };
+
+  infoEventSource.onopen = () => {
+    // Reconnected — stop fallback polling
+    clearInterval(infoInterval);
+    infoInterval = null;
+  };
+}
+
+function stopEventStream() {
+  if (infoEventSource) { infoEventSource.close(); infoEventSource = null; }
+  clearInterval(infoInterval);
+  infoInterval = null;
+}
+
+// Manual refresh — used by the ↺ button and as fallback when SSE is down
 async function fetchServerInfo() {
   try {
     const res  = await apiFetch('/api/info');
     const data = await res.json();
-
-    // Player count
-    const playerEl = document.getElementById('infoPlayerCount');
-    const count = typeof data.playerCount === 'number' ? data.playerCount : 0;
-    playerEl.textContent = count === 0 ? '0 (empty)' : `${count} online`;
-    playerEl.classList.toggle('has-players', count > 0);
-
-    // Join code
-    const joinEl = document.getElementById('infoJoinCode');
-    joinEl.textContent = data.joinCode || 'Not found in logs';
-    joinEl.dataset.code = data.joinCode || '';
-
-    // Last refreshed
-    const now = new Date();
-    document.getElementById('infoLastRefresh').textContent =
-      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    updateInfoBar(data);
   } catch (_) {
     document.getElementById('infoPlayerCount').textContent = '—';
     document.getElementById('infoJoinCode').textContent = '—';
