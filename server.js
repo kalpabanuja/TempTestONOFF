@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const { exec, spawn } = require('child_process');
 const path = require('path');
 const cors = require('cors');
+const activityTracker = require('./activityTracker');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,6 +45,14 @@ function broadcastInfo(extra = {}) {
   const payload = JSON.stringify({ ...liveState, ...extra });
   for (const res of eventClients) {
     res.write(`event: info\ndata: ${payload}\n\n`);
+  }
+}
+
+function broadcastActivity(event) {
+  if (!event) return;
+  const payload = JSON.stringify(event);
+  for (const res of eventClients) {
+    res.write(`event: activity\ndata: ${payload}\n\n`);
   }
 }
 
@@ -124,6 +133,13 @@ async function getAccurateServerInfo() {
     }
   } catch (_) {}
 
+  // Update activity tracker registry with verified online players
+  if (Array.isArray(playersList) && playersList.length > 0) {
+    playersList.forEach((name) => {
+      activityTracker.registerPlayer(name, { online: true });
+    });
+  }
+
   return {
     joinCode: joinCode || liveState.joinCode,
     playerCount: playerCount !== null ? playerCount : liveState.playerCount,
@@ -138,6 +154,15 @@ function startLogWatcher() {
   if (watcherProcess) { try { watcherProcess.kill(); } catch (_) {} }
 
   console.log(`[watcher] Starting log watcher for container: ${VALHEIM_CONTAINER}`);
+
+  // Backfill recent logs on watcher startup into activity tracker
+  exec(
+    `docker logs --tail 2500 ${VALHEIM_CONTAINER} 2>&1`,
+    { maxBuffer: 10 * 1024 * 1024 },
+    (err, stdout) => {
+      if (stdout) activityTracker.backfillLogs(stdout);
+    }
+  );
 
   // Initial sync on watcher start
   getAccurateServerInfo().then((info) => {
@@ -170,6 +195,9 @@ function startLogWatcher() {
 
   const processLine = (line) => {
     if (!line.trim()) return;
+
+    // Ingest into user activity tracker for audit & security monitoring
+    activityTracker.processLogLine(line);
 
     // Server start / restart detected
     if (/DungeonDB Start|Game server connected|Valheim version/i.test(line)) {
@@ -493,6 +521,60 @@ app.get('/api/logs', requireAuth, (req, res) => {
   });
 });
 
+// ─── GET /api/activity (filtered user audit & activity logs) ─────────────────
+app.get('/api/activity', requireAuth, (req, res) => {
+  try {
+    const events = activityTracker.getEvents(req.query);
+    const stats = activityTracker.getStats(liveState.playerCount);
+    res.json({ events, stats });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/players (active & known player registry with IPs) ─────────────
+app.get('/api/players', requireAuth, async (req, res) => {
+  try {
+    await activityTracker.refreshClientSockets().catch(() => {});
+    const players = activityTracker.getPlayers(liveState.players);
+    res.json({ players });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/activity/clear (clear log history) ────────────────────────────
+app.post('/api/activity/clear', requireAuth, (req, res) => {
+  try {
+    const result = activityTracker.clearEvents();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/activity/export (export JSON / CSV) ───────────────────────────
+app.get('/api/activity/export', requireAuth, (req, res) => {
+  try {
+    const format = req.query.format || 'json';
+    const events = activityTracker.getEvents({ limit: 5000 });
+    if (format === 'csv') {
+      const header = 'Timestamp,Date,Player,IP,Type,Severity,Title,Details\n';
+      const rows = events.map(e => 
+        `"${e.timestamp}","${e.dateStr}","${(e.player||'').replace(/"/g, '""')}","${(e.ip||'').replace(/"/g, '""')}","${e.type}","${e.severity}","${(e.title||'').replace(/"/g, '""')}","${(e.details||'').replace(/"/g, '""')}"`
+      ).join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="valheim-activity-audit.csv"');
+      return res.send(header + rows);
+    }
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="valheim-activity-audit.json"');
+    res.json(events);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Fallback → serve index.html ─────────────────────────────────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -505,6 +587,13 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   Network: http://<server-ip>:${PORT}`);
   console.log(`   Container: ${VALHEIM_CONTAINER}`);
   console.log(`   Login: ${ADMIN_USERNAME} / ${ADMIN_PASSWORD_PLAIN}\n`);
+
+  // Initialize activity tracker with broadcast callback
+  activityTracker.init({
+    containerName: VALHEIM_CONTAINER,
+    dockerCmd,
+    onNewEvent: (event) => broadcastActivity(event)
+  });
 
   // Start watching docker logs immediately
   startLogWatcher();

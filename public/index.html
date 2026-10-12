@@ -82,18 +82,18 @@
         <span class="nav-emblem">⚔</span>
         <span class="nav-title">VALHEIM ADMIN</span>
       </div>
-      <!-- Nav tabs (disabled for now)
-      <div class="nav-tabs" style="display: none;">
+      <!-- Nav tabs -->
+      <div class="nav-tabs">
         <button class="nav-tab active" id="tabBtnDashboard" onclick="switchTab('dashboard')">
           <span class="tab-icon">⚙</span>
           <span class="tab-text">DASHBOARD</span>
         </button>
-        <button class="nav-tab" id="tabBtnMap" onclick="switchTab('map')">
-          <span class="tab-icon">🗺</span>
-          <span class="tab-text">WORLD MAP</span>
+        <button class="nav-tab" id="tabBtnActivity" onclick="switchTab('activity')">
+          <span class="tab-icon">🛡</span>
+          <span class="tab-text">USER ACTIVITY</span>
+          <span class="tab-badge-alert hidden" id="suspiciousNavBadge">0</span>
         </button>
       </div>
-      -->
       <div class="nav-actions">
         <div class="status-badge" id="statusBadge">
           <span class="status-dot" id="statusDot"></span>
@@ -107,133 +107,314 @@
 
     <main class="dashboard">
 
-      <!-- Server Control Panel -->
-      <section class="panel control-panel">
-        <div class="panel-header">
-          <h2 class="panel-title">
-            <span class="panel-icon">⚙</span> Server Control
-          </h2>
-          <div class="divider-rune">᛬</div>
-        </div>
-        <div class="control-grid">
+      <!-- ══════════ TAB: DASHBOARD ══════════ -->
+      <div id="tabContentDashboard" class="tab-pane active">
 
-          <button id="btnStart" class="ctrl-btn start" onclick="serverAction('start')">
-            <span class="ctrl-icon">▶</span>
-            <span class="ctrl-label">START</span>
-            <span class="ctrl-sub">Boot the server</span>
-          </button>
+        <!-- Server Control Panel -->
+        <section class="panel control-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <span class="panel-icon">⚙</span> Server Control
+            </h2>
+            <div class="divider-rune">᛬</div>
+          </div>
+          <div class="control-grid">
 
-          <button id="btnStop" class="ctrl-btn stop" onclick="serverAction('stop')">
-            <span class="ctrl-icon">■</span>
-            <span class="ctrl-label">STOP</span>
-            <span class="ctrl-sub">Shut down safely</span>
-          </button>
+            <button id="btnStart" class="ctrl-btn start" onclick="serverAction('start')">
+              <span class="ctrl-icon">▶</span>
+              <span class="ctrl-label">START</span>
+              <span class="ctrl-sub">Boot the server</span>
+            </button>
 
-          <button id="btnRestart" class="ctrl-btn restart" onclick="serverAction('restart')">
-            <span class="ctrl-icon">↺</span>
-            <span class="ctrl-label">RESTART</span>
-            <span class="ctrl-sub">Cycle the server</span>
-          </button>
+            <button id="btnStop" class="ctrl-btn stop" onclick="serverAction('stop')">
+              <span class="ctrl-icon">■</span>
+              <span class="ctrl-label">STOP</span>
+              <span class="ctrl-sub">Shut down safely</span>
+            </button>
 
-        </div>
+            <button id="btnRestart" class="ctrl-btn restart" onclick="serverAction('restart')">
+              <span class="ctrl-icon">↺</span>
+              <span class="ctrl-label">RESTART</span>
+              <span class="ctrl-sub">Cycle the server</span>
+            </button>
 
-        <!-- Toast notification -->
-        <div id="actionToast" class="action-toast hidden">
-          <span id="actionToastText"></span>
-        </div>
-      </section>
+          </div>
 
-      <!-- Server Info Stats Bar -->
-      <section class="panel info-panel">
-        <div class="info-grid">
+          <!-- Toast notification -->
+          <div id="actionToast" class="action-toast hidden">
+            <span id="actionToastText"></span>
+          </div>
+        </section>
 
-          <div class="info-stat" id="statPlayers">
-            <span class="info-stat-icon">👥</span>
-            <div class="info-stat-body">
-              <span class="info-stat-label">PLAYERS ONLINE</span>
-              <span class="info-stat-value" id="infoPlayerCount">—</span>
+        <!-- Server Info Stats Bar -->
+        <section class="panel info-panel">
+          <div class="info-grid">
+
+            <div class="info-stat" id="statPlayers">
+              <span class="info-stat-icon">👥</span>
+              <div class="info-stat-body">
+                <span class="info-stat-label">PLAYERS ONLINE</span>
+                <span class="info-stat-value" id="infoPlayerCount">—</span>
+              </div>
+            </div>
+
+            <div class="info-divider"></div>
+
+            <div class="info-stat" id="statJoinCode">
+              <span class="info-stat-icon">🔑</span>
+              <div class="info-stat-body">
+                <span class="info-stat-label">JOIN CODE</span>
+                <span class="info-stat-value mono" id="infoJoinCode">—</span>
+              </div>
+              <button class="btn-copy" id="btnCopyJoin" title="Copy join code" onclick="copyJoinCode()">
+                ⧉
+              </button>
+            </div>
+
+            <div class="info-divider"></div>
+
+            <div class="info-stat">
+              <span class="info-stat-icon">🌐</span>
+              <div class="info-stat-body">
+                <span class="info-stat-label">SERVER ADDRESS</span>
+                <span class="info-stat-value mono" id="infoAddress">172.105.121.226:2456</span>
+              </div>
+              <button class="btn-copy" title="Copy address" onclick="copyAddress()">
+                ⧉
+              </button>
+            </div>
+
+            <div class="info-divider"></div>
+
+            <div class="info-stat">
+              <span class="info-stat-icon">🕐</span>
+              <div class="info-stat-body">
+                <span class="info-stat-label">LAST REFRESHED</span>
+                <span class="info-stat-value" id="infoLastRefresh">—</span>
+              </div>
+              <button class="btn-copy" title="Refresh now" onclick="fetchServerInfo()">
+                ↺
+              </button>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Server Logs Panel -->
+        <section class="panel logs-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <span class="panel-icon">📜</span> Server Logs
+            </h2>
+            <div class="log-actions">
+              <button id="btnToggleLogs" class="btn-secondary" onclick="toggleLogs()">
+                ⏸ Pause
+              </button>
+              <button class="btn-secondary" onclick="clearLogs()">
+                ✕ Clear
+              </button>
+              <button class="btn-secondary" onclick="downloadLogs()">
+                ↓ Save
+              </button>
             </div>
           </div>
 
-          <div class="info-divider"></div>
-
-          <div class="info-stat" id="statJoinCode">
-            <span class="info-stat-icon">🔑</span>
-            <div class="info-stat-body">
-              <span class="info-stat-label">JOIN CODE</span>
-              <span class="info-stat-value mono" id="infoJoinCode">—</span>
+          <div id="logContainer" class="log-container">
+            <div class="log-connecting">
+              <div class="spinner"></div>
+              <span>Connecting to log stream...</span>
             </div>
-            <button class="btn-copy" id="btnCopyJoin" title="Copy join code" onclick="copyJoinCode()">
-              ⧉
-            </button>
           </div>
 
-          <div class="info-divider"></div>
-
-          <div class="info-stat">
-            <span class="info-stat-icon">🌐</span>
-            <div class="info-stat-body">
-              <span class="info-stat-label">SERVER ADDRESS</span>
-              <span class="info-stat-value mono" id="infoAddress">172.105.121.226:2456</span>
-            </div>
-            <button class="btn-copy" title="Copy address" onclick="copyAddress()">
-              ⧉
-            </button>
+          <div class="log-footer">
+            <span id="logCount" class="log-count">0 lines</span>
+            <span class="log-stream-status" id="logStreamStatus">● Connecting</span>
           </div>
+        </section>
 
-          <div class="info-divider"></div>
-
-          <div class="info-stat">
-            <span class="info-stat-icon">🕐</span>
-            <div class="info-stat-body">
-              <span class="info-stat-label">LAST REFRESHED</span>
-              <span class="info-stat-value" id="infoLastRefresh">—</span>
-            </div>
-            <button class="btn-copy" title="Refresh now" onclick="fetchServerInfo()">
-              ↺
-            </button>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- Server Logs Panel -->
-      <section class="panel logs-panel">
-        <div class="panel-header">
-          <h2 class="panel-title">
-            <span class="panel-icon">📜</span> Server Logs
-          </h2>
-          <div class="log-actions">
-            <button id="btnToggleLogs" class="btn-secondary" onclick="toggleLogs()">
-              ⏸ Pause
-            </button>
-            <button class="btn-secondary" onclick="clearLogs()">
-              ✕ Clear
-            </button>
-            <button class="btn-secondary" onclick="downloadLogs()">
-              ↓ Save
-            </button>
-          </div>
-        </div>
-
-        <div id="logContainer" class="log-container">
-          <div class="log-connecting">
-            <div class="spinner"></div>
-            <span>Connecting to log stream...</span>
-          </div>
-        </div>
-
-        <div class="log-footer">
-          <span id="logCount" class="log-count">0 lines</span>
-          <span class="log-stream-status" id="logStreamStatus">● Connecting</span>
-        </div>
-      </section>
-
-      <!-- World Map (disabled for now)
-      <div id="tabContentMap" class="tab-pane" style="display: none;">
-        ...
       </div>
-      -->
+
+      <!-- ══════════ TAB: USER ACTIVITY & AUDIT ══════════ -->
+      <div id="tabContentActivity" class="tab-pane">
+
+        <!-- Activity Overview Metric Cards -->
+        <section class="panel activity-stats-panel">
+          <div class="activity-stats-grid">
+            <div class="act-stat-card">
+              <span class="act-stat-icon">👥</span>
+              <div class="act-stat-info">
+                <span class="act-stat-label">KNOWN VIKINGS</span>
+                <span class="act-stat-value" id="statKnownPlayers">0</span>
+                <span class="act-stat-sub">Tracked characters</span>
+              </div>
+            </div>
+
+            <div class="act-stat-card">
+              <span class="act-stat-icon live-pulse">🟢</span>
+              <div class="act-stat-info">
+                <span class="act-stat-label">ONLINE NOW</span>
+                <span class="act-stat-value" id="statOnlinePlayers">0</span>
+                <span class="act-stat-sub">Active in realm</span>
+              </div>
+            </div>
+
+            <div class="act-stat-card">
+              <span class="act-stat-icon">📜</span>
+              <div class="act-stat-info">
+                <span class="act-stat-label">14-DAY LOGGED EVENTS</span>
+                <span class="act-stat-value" id="statTotalEvents">0</span>
+                <span class="act-stat-sub">Auto-purges after 2 weeks</span>
+              </div>
+            </div>
+
+            <div class="act-stat-card alert-clickable" onclick="filterSuspiciousOnly()" title="Click to view suspicious events">
+              <span class="act-stat-icon">🚨</span>
+              <div class="act-stat-info">
+                <span class="act-stat-label">SUSPICIOUS ACTIVITIES</span>
+                <span class="act-stat-value alert-text" id="statSuspiciousCount">0</span>
+                <span class="act-stat-sub">Drops, desyncs & spam</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Player Directory & IP Registry -->
+        <section class="panel player-registry-panel">
+          <div class="panel-header">
+            <div class="panel-header-title">
+              <h2 class="panel-title">
+                <span class="panel-icon">🛡</span> Player Directory & IP Registry
+              </h2>
+              <span class="panel-subtitle">Known Viking characters, network IPs, and connection status</span>
+            </div>
+            <div class="registry-actions">
+              <button class="btn-secondary" onclick="loadPlayers()">
+                ↺ Refresh Players
+              </button>
+            </div>
+          </div>
+
+          <div id="playersDirectoryList" class="players-directory-grid">
+            <div class="players-loading">
+              <div class="spinner"></div>
+              <span>Querying player registry...</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- In-Game Activity & Security Log Section -->
+        <section class="panel activity-feed-panel">
+          <div class="panel-header">
+            <div class="panel-header-title">
+              <h2 class="panel-title">
+                <span class="panel-icon">📜</span> In-Game Activity & Security Log
+              </h2>
+              <span class="panel-subtitle">Capturing joins, deaths, in-game actions, and security drops (14-day history)</span>
+            </div>
+            <div class="activity-top-actions">
+              <div class="retention-pill">
+                <span>⏱ 14-Day Retention Active</span>
+              </div>
+              <button class="btn-secondary" onclick="loadActivityLogs()">
+                ↺ Refresh
+              </button>
+              <div class="dropdown-export">
+                <button class="btn-secondary" id="btnExportMenu" onclick="toggleExportMenu()">
+                  ↓ Export ▾
+                </button>
+                <div class="export-dropdown-menu hidden" id="exportDropdownMenu">
+                  <a href="#" onclick="exportLogs('json'); return false;">Export JSON</a>
+                  <a href="#" onclick="exportLogs('csv'); return false;">Export CSV</a>
+                </div>
+              </div>
+              <button class="btn-secondary danger" onclick="confirmClearActivity()">
+                ✕ Clear
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter & Search Toolbar -->
+          <div class="activity-toolbar">
+            <div class="search-wrap">
+              <span class="search-icon">🔍</span>
+              <input
+                id="activitySearchInput"
+                type="text"
+                class="search-input"
+                placeholder="Search Viking, IP, action, or error keyword..."
+                oninput="debounceFilterActivity()"
+              />
+              <button id="btnClearSearch" class="btn-clear-search hidden" onclick="clearActivitySearch()">✕</button>
+            </div>
+
+            <div class="filter-controls">
+              <!-- User Filter -->
+              <div class="filter-group">
+                <label for="filterUser" class="filter-label">VIKING</label>
+                <select id="filterUser" class="filter-select" onchange="applyActivityFilters()">
+                  <option value="all">All Vikings</option>
+                </select>
+              </div>
+
+              <!-- Category Filter -->
+              <div class="filter-group">
+                <label for="filterCategory" class="filter-label">CATEGORY</label>
+                <select id="filterCategory" class="filter-select" onchange="applyActivityFilters()">
+                  <option value="all">All Categories</option>
+                  <option value="join_leave">⚔ Joins & Leaves</option>
+                  <option value="death">💀 Deaths</option>
+                  <option value="action">⛏ In-Game Actions</option>
+                  <option value="suspicious">🚨 Suspicious Activities</option>
+                </select>
+              </div>
+
+              <!-- Severity Filter -->
+              <div class="filter-group">
+                <label for="filterSeverity" class="filter-label">SEVERITY</label>
+                <select id="filterSeverity" class="filter-select" onchange="applyActivityFilters()">
+                  <option value="all">All Levels</option>
+                  <option value="info">Info</option>
+                  <option value="warn">Warnings</option>
+                  <option value="danger">Critical / Danger</option>
+                </select>
+              </div>
+
+              <!-- Time Range Filter -->
+              <div class="filter-group">
+                <label for="filterTimeRange" class="filter-label">TIME RANGE</label>
+                <select id="filterTimeRange" class="filter-select" onchange="applyActivityFilters()">
+                  <option value="14d">Past 14 Days (Full)</option>
+                  <option value="7d">Past 7 Days</option>
+                  <option value="48h">Past 48 Hours</option>
+                  <option value="24h">Today (Past 24h)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modded Notice Callout -->
+          <div class="mod-note-callout">
+            <span class="mod-note-icon">ℹ</span>
+            <div class="mod-note-text">
+              <strong>Vanilla vs. Modded Logging:</strong> Dedicated Valheim logs capture character connections, joins, deaths, network drops, and PlayFab errors out-of-the-box. In-game actions like resource mining and creature kills are client-authoritative in vanilla Valheim, but our engine will automatically parse and display them as soon as you install a server-side mod (such as <em>DiscordConnector</em> or <em>BepInEx ServerLogs</em>).
+            </div>
+          </div>
+
+          <!-- Activity Event Feed -->
+          <div id="activityLogFeed" class="activity-feed">
+            <div class="activity-loading">
+              <div class="spinner"></div>
+              <span>Loading activity events...</span>
+            </div>
+          </div>
+
+          <div class="activity-feed-footer">
+            <span id="activityLogCount" class="activity-count">Showing 0 events</span>
+            <span class="activity-live-indicator">● Real-time sync active</span>
+          </div>
+        </section>
+
+      </div>
 
     </main>
   </div>

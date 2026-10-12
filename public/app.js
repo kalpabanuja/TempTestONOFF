@@ -241,6 +241,11 @@ function startEventStream() {
     try { updateInfoBar(JSON.parse(e.data)); } catch (_) {}
   });
 
+  // Live push for user activity & security alerts
+  infoEventSource.addEventListener('activity', (e) => {
+    try { onLiveActivityReceived(JSON.parse(e.data)); } catch (_) {}
+  });
+
   infoEventSource.onerror = () => {
     // SSE disconnected — fall back to polling every 15s until reconnected
     if (!infoInterval) {
@@ -453,25 +458,417 @@ let currentWorldSeed = '';
 let currentWorldName = '';
 let mapLoaded = false;
 
+// ─── User Activity & Player Registry ───────────────────────────────────────
+let activityFilterTimeout = null;
+let currentActivityEvents = [];
+let knownPlayersList = [];
+
 function switchTab(tab) {
   currentActiveTab = tab;
 
   // Toggle tab buttons
   const btnDash = document.getElementById('tabBtnDashboard');
+  const btnAct  = document.getElementById('tabBtnActivity');
   const btnMap  = document.getElementById('tabBtnMap');
   if (btnDash) btnDash.classList.toggle('active', tab === 'dashboard');
+  if (btnAct)  btnAct.classList.toggle('active', tab === 'activity');
   if (btnMap)  btnMap.classList.toggle('active', tab === 'map');
 
   // Toggle tab panes
   const paneDash = document.getElementById('tabContentDashboard');
+  const paneAct  = document.getElementById('tabContentActivity');
   const paneMap  = document.getElementById('tabContentMap');
   if (paneDash) paneDash.classList.toggle('active', tab === 'dashboard');
+  if (paneAct)  paneAct.classList.toggle('active', tab === 'activity');
   if (paneMap)  paneMap.classList.toggle('active', tab === 'map');
 
-  // If switching to map and not loaded yet, fetch world info & seed
-  if (tab === 'map' && !mapLoaded) {
+  if (tab === 'activity') {
+    loadPlayers();
+    loadActivityLogs();
+  } else if (tab === 'map' && !mapLoaded) {
     fetchWorldInfo();
   }
+}
+
+// Format relative time (e.g. "2 mins ago", "Yesterday")
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return '—';
+  const diff = Date.now() - Number(timestamp);
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return `${Math.max(1, seconds)}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 14) return `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString();
+}
+
+// ─── Player Directory ───────────────────────────────────────────────────────
+async function loadPlayers() {
+  const container = document.getElementById('playersDirectoryList');
+  if (!container) return;
+
+  try {
+    const res = await apiFetch('/api/players');
+    const data = await res.json();
+    knownPlayersList = Array.isArray(data.players) ? data.players : [];
+
+    // Populate user filter dropdown
+    const userSelect = document.getElementById('filterUser');
+    if (userSelect) {
+      const currentVal = userSelect.value;
+      userSelect.innerHTML = '<option value="all">All Vikings</option>';
+      knownPlayersList.forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name + (p.status === 'online' ? ' (Online)' : '');
+        userSelect.appendChild(opt);
+      });
+      userSelect.value = currentVal || 'all';
+    }
+
+    if (knownPlayersList.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <span class="empty-icon">🛡</span>
+          <p class="empty-title">No Vikings Recorded Yet</p>
+          <span class="empty-sub">Players will automatically register here with their IP addresses as soon as they connect to the realm.</span>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = knownPlayersList.map((player) => {
+      const isOnline = player.status === 'online';
+      const cleanIp = player.ip || 'Direct / Relay';
+
+      return `
+        <div class="player-card ${isOnline ? 'online' : 'offline'}">
+          <div class="player-card-header">
+            <div class="player-avatar">${player.name.charAt(0).toUpperCase()}</div>
+            <div class="player-title-wrap">
+              <span class="player-card-name" title="${escapeHtml(player.name)}">${escapeHtml(player.name)}</span>
+              <div class="player-status-tag ${isOnline ? 'online' : 'offline'}">
+                <span class="status-dot-sm ${isOnline ? 'running' : 'stopped'}"></span>
+                <span>${isOnline ? 'Active Online' : `Seen ${formatRelativeTime(player.lastSeen)}`}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="player-card-details">
+            <div class="player-meta-row">
+              <span class="meta-label">IP ADDRESS:</span>
+              <div class="meta-val-ip-wrap">
+                <span class="meta-val mono ip-text" title="${escapeHtml(cleanIp)}">${escapeHtml(cleanIp)}</span>
+                <button class="btn-copy-sm" title="Copy IP" onclick="copyText('${escapeHtml(cleanIp)}')">⧉</button>
+              </div>
+            </div>
+
+            <div class="player-meta-row">
+              <span class="meta-label">NETWORK ID:</span>
+              <span class="meta-val mono" title="${escapeHtml(player.platformId || 'N/A')}">${escapeHtml(player.platformId || 'Direct Peer')}</span>
+            </div>
+
+            <div class="player-meta-row">
+              <span class="meta-label">FIRST JOINED:</span>
+              <span class="meta-val">${formatRelativeTime(player.firstSeen)}</span>
+            </div>
+          </div>
+
+          <div class="player-card-actions">
+            <button class="btn-filter-user" onclick="filterByPlayer('${escapeHtml(player.name)}')">
+              🔍 Filter Audit Logs
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  } catch (err) {
+    container.innerHTML = `
+      <div class="empty-state error">
+        <span class="empty-icon">⚠</span>
+        <p class="empty-title">Failed to Query Player Registry</p>
+        <span class="empty-sub">${escapeHtml(err.message)}</span>
+      </div>
+    `;
+  }
+}
+
+// ─── Activity Log Feed ──────────────────────────────────────────────────────
+async function loadActivityLogs() {
+  const feed = document.getElementById('activityLogFeed');
+  if (!feed) return;
+
+  const search = document.getElementById('activitySearchInput')?.value || '';
+  const user = document.getElementById('filterUser')?.value || 'all';
+  const category = document.getElementById('filterCategory')?.value || 'all';
+  const severity = document.getElementById('filterSeverity')?.value || 'all';
+  const timeRange = document.getElementById('filterTimeRange')?.value || '14d';
+
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (user !== 'all') params.set('user', user);
+  if (category !== 'all') params.set('type', category);
+  if (severity !== 'all') params.set('severity', severity);
+  if (timeRange !== '14d') params.set('timeRange', timeRange);
+
+  try {
+    const res = await apiFetch(`/api/activity?${params.toString()}`);
+    const data = await res.json();
+    currentActivityEvents = Array.isArray(data.events) ? data.events : [];
+    const stats = data.stats || {};
+
+    // Update stats cards
+    const statKnown = document.getElementById('statKnownPlayers');
+    const statOnline = document.getElementById('statOnlinePlayers');
+    const statTotal = document.getElementById('statTotalEvents');
+    const statSuspicious = document.getElementById('statSuspiciousCount');
+    const navBadge = document.getElementById('suspiciousNavBadge');
+
+    if (statKnown) statKnown.textContent = stats.totalPlayers ?? 0;
+    if (statOnline) statOnline.textContent = stats.onlinePlayers ?? 0;
+    if (statTotal) statTotal.textContent = stats.totalEvents ?? 0;
+    if (statSuspicious) statSuspicious.textContent = stats.suspiciousEvents ?? 0;
+
+    if (navBadge) {
+      const sCount = stats.suspiciousEvents || 0;
+      navBadge.textContent = sCount > 99 ? '99+' : sCount;
+      navBadge.classList.toggle('hidden', sCount === 0);
+    }
+
+    renderActivityFeed(currentActivityEvents);
+
+  } catch (err) {
+    feed.innerHTML = `
+      <div class="empty-state error">
+        <span class="empty-icon">⚠</span>
+        <p class="empty-title">Error Loading Activity Log</p>
+        <span class="empty-sub">${escapeHtml(err.message)}</span>
+      </div>
+    `;
+  }
+}
+
+function renderActivityFeed(events) {
+  const feed = document.getElementById('activityLogFeed');
+  const countEl = document.getElementById('activityLogCount');
+  if (!feed) return;
+
+  if (countEl) countEl.textContent = `Showing ${events.length} event${events.length === 1 ? '' : 's'}`;
+
+  if (!events || events.length === 0) {
+    feed.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">📜</span>
+        <p class="empty-title">No Matching Activity Found</p>
+        <span class="empty-sub">Try broadening your search or choosing "All Categories".</span>
+      </div>
+    `;
+    return;
+  }
+
+  feed.innerHTML = events.map((e) => {
+    let icon = '📜';
+    let typeBadge = (e.type || 'INFO').toUpperCase();
+    let severityClass = e.severity || 'info';
+
+    if (e.type === 'join') {
+      icon = '⚔';
+      typeBadge = 'JOIN';
+    } else if (e.type === 'leave') {
+      icon = '🚪';
+      typeBadge = 'LEAVE';
+    } else if (e.type === 'death') {
+      icon = '💀';
+      typeBadge = 'DEATH';
+    } else if (e.type === 'action') {
+      icon = '⛏';
+      typeBadge = 'ACTION';
+    } else if (e.type === 'suspicious') {
+      icon = '🚨';
+      typeBadge = 'SUSPICIOUS';
+      severityClass = 'danger';
+    }
+
+    const hasRaw = Boolean(e.raw && e.raw.trim());
+    const rawId = `raw_${e.id}`;
+
+    return `
+      <div class="activity-card ${severityClass} ${e.type}">
+        <div class="activity-icon-badge">${icon}</div>
+        <div class="activity-content">
+          <div class="activity-header-line">
+            <div class="activity-tags">
+              <span class="activity-badge badge-${severityClass}">${typeBadge}</span>
+              <button class="activity-player-pill" onclick="filterByPlayer('${escapeHtml(e.player)}')" title="Filter by ${escapeHtml(e.player)}">
+                👤 ${escapeHtml(e.player)}
+              </button>
+              ${e.ip ? `<span class="activity-ip-pill mono" onclick="copyText('${escapeHtml(e.ip)}')" title="Click to copy IP">🌐 ${escapeHtml(e.ip)}</span>` : ''}
+            </div>
+            <div class="activity-time-wrap" title="${escapeHtml(e.dateStr || '')}">
+              <span class="activity-rel-time">${formatRelativeTime(e.timestamp)}</span>
+              <span class="activity-exact-time mono">${escapeHtml(e.dateStr || '')}</span>
+            </div>
+          </div>
+
+          <div class="activity-title-text">${escapeHtml(e.title || 'Event')}</div>
+          <div class="activity-details-text">${escapeHtml(e.details || '')}</div>
+
+          ${hasRaw ? `
+            <div class="activity-raw-toggle" onclick="toggleRawSnippet('${rawId}')">
+              <span>▶ Server log snippet</span>
+            </div>
+            <div id="${rawId}" class="activity-raw-content mono hidden">
+              ${escapeHtml(e.raw)}
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleRawSnippet(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isHidden = el.classList.toggle('hidden');
+  const toggleBtn = el.previousElementSibling;
+  if (toggleBtn) {
+    toggleBtn.querySelector('span').textContent = isHidden ? '▶ Server log snippet' : '▼ Hide server log snippet';
+  }
+}
+
+function debounceFilterActivity() {
+  const input = document.getElementById('activitySearchInput');
+  const clearBtn = document.getElementById('btnClearSearch');
+  if (clearBtn) clearBtn.classList.toggle('hidden', !input.value);
+
+  if (activityFilterTimeout) clearTimeout(activityFilterTimeout);
+  activityFilterTimeout = setTimeout(() => {
+    loadActivityLogs();
+  }, 350);
+}
+
+function clearActivitySearch() {
+  const input = document.getElementById('activitySearchInput');
+  if (input) input.value = '';
+  const clearBtn = document.getElementById('btnClearSearch');
+  if (clearBtn) clearBtn.classList.add('hidden');
+  loadActivityLogs();
+}
+
+function applyActivityFilters() {
+  loadActivityLogs();
+}
+
+function filterByPlayer(playerName) {
+  if (!playerName || playerName === 'System' || playerName.includes('(')) return;
+  const userSelect = document.getElementById('filterUser');
+  if (userSelect) {
+    let found = false;
+    for (let opt of userSelect.options) {
+      if (opt.value.toLowerCase() === playerName.toLowerCase()) {
+        opt.selected = true;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      const newOpt = document.createElement('option');
+      newOpt.value = playerName;
+      newOpt.textContent = playerName;
+      newOpt.selected = true;
+      userSelect.appendChild(newOpt);
+    }
+  }
+
+  const feed = document.getElementById('activityLogFeed');
+  if (feed) feed.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  loadActivityLogs();
+  showToast(`Filtered activity for ${playerName}`);
+}
+
+function filterSuspiciousOnly() {
+  const catSelect = document.getElementById('filterCategory');
+  if (catSelect) catSelect.value = 'suspicious';
+  loadActivityLogs();
+  const feed = document.getElementById('activityLogFeed');
+  if (feed) feed.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast('Filtered to Suspicious Activity only');
+}
+
+// Live activity received via SSE
+function onLiveActivityReceived(event) {
+  const navBadge = document.getElementById('suspiciousNavBadge');
+  if (navBadge && (event.type === 'suspicious' || event.severity === 'danger')) {
+    navBadge.classList.remove('hidden');
+    const cur = parseInt(navBadge.textContent) || 0;
+    navBadge.textContent = cur + 1;
+  }
+
+  if (currentActiveTab === 'activity') {
+    currentActivityEvents.unshift(event);
+    renderActivityFeed(currentActivityEvents);
+
+    if (event.type === 'join' || event.type === 'leave') {
+      loadPlayers();
+    }
+  }
+}
+
+// Export dropdown
+function toggleExportMenu() {
+  const menu = document.getElementById('exportDropdownMenu');
+  if (menu) menu.classList.toggle('hidden');
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.dropdown-export')) {
+    const menu = document.getElementById('exportDropdownMenu');
+    if (menu) menu.classList.add('hidden');
+  }
+});
+
+function exportLogs(format = 'json') {
+  toggleExportMenu();
+  const url = `/api/activity/export?format=${format}&token=${encodeURIComponent(authToken)}`;
+  window.open(url, '_blank');
+}
+
+async function confirmClearActivity() {
+  if (!confirm('Are you sure you want to clear the 14-day activity log history? This cannot be undone.')) {
+    return;
+  }
+  try {
+    const res = await apiFetch('/api/activity/clear', { method: 'POST' });
+    if (res.ok) {
+      showToast('Activity log history cleared');
+      loadActivityLogs();
+    } else {
+      showToast('Failed to clear activity logs', true);
+    }
+  } catch (_) {
+    showToast('Error sending clear request', true);
+  }
+}
+
+function copyText(str) {
+  if (!str) return;
+  copyToClipboard(str, window.event ? window.event.currentTarget : null);
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 async function fetchWorldInfo(forceReload = false) {
