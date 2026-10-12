@@ -447,6 +447,134 @@ function downloadLogs() {
   URL.revokeObjectURL(url);
 }
 
+// ─── World Map & Tabs ────────────────────────────────────────────────────────
+let currentActiveTab = 'dashboard';
+let currentWorldSeed = '';
+let currentWorldName = '';
+let mapLoaded = false;
+
+function switchTab(tab) {
+  currentActiveTab = tab;
+
+  // Toggle tab buttons
+  const btnDash = document.getElementById('tabBtnDashboard');
+  const btnMap  = document.getElementById('tabBtnMap');
+  if (btnDash) btnDash.classList.toggle('active', tab === 'dashboard');
+  if (btnMap)  btnMap.classList.toggle('active', tab === 'map');
+
+  // Toggle tab panes
+  const paneDash = document.getElementById('tabContentDashboard');
+  const paneMap  = document.getElementById('tabContentMap');
+  if (paneDash) paneDash.classList.toggle('active', tab === 'dashboard');
+  if (paneMap)  paneMap.classList.toggle('active', tab === 'map');
+
+  // If switching to map and not loaded yet, fetch world info & seed
+  if (tab === 'map' && !mapLoaded) {
+    fetchWorldInfo();
+  }
+}
+
+async function fetchWorldInfo(forceReload = false) {
+  const overlay = document.getElementById('mapLoadingOverlay');
+  if (overlay) overlay.classList.remove('hidden');
+
+  try {
+    const res = await apiFetch('/api/world');
+    const data = await res.json();
+
+    currentWorldName = data.worldName || 'Dedicated';
+    currentWorldSeed = data.seed || '';
+
+    // Update UI elements
+    const titleEl = document.getElementById('mapWorldTitle');
+    if (titleEl) titleEl.textContent = `Realm: ${currentWorldName}`;
+    const badgeName = document.getElementById('badgeWorldName');
+    if (badgeName) badgeName.textContent = currentWorldName;
+    const badgeSeed = document.getElementById('badgeActiveSeed');
+    if (badgeSeed) badgeSeed.textContent = currentWorldSeed || 'None';
+    const seedInput = document.getElementById('mapSeedInput');
+    if (seedInput) seedInput.value = currentWorldSeed;
+
+    loadMapInIframe(currentWorldSeed);
+    mapLoaded = true;
+
+    if (forceReload) {
+      showToast(currentWorldSeed ? `Seed detected: ${currentWorldSeed}` : 'No seed file found — enter a seed manually');
+    }
+  } catch (err) {
+    if (overlay) overlay.classList.add('hidden');
+    showToast('Failed to query server world metadata');
+  }
+}
+
+function loadMapInIframe(seed) {
+  const frame = document.getElementById('worldMapFrame');
+  const overlay = document.getElementById('mapLoadingOverlay');
+  if (overlay) overlay.classList.remove('hidden');
+
+  const url = seed
+    ? `https://valheim-map.world/?seed=${encodeURIComponent(seed)}`
+    : 'https://valheim-map.world/';
+
+  if (frame) {
+    frame.src = url;
+    frame.onload = () => {
+      if (overlay) overlay.classList.add('hidden');
+    };
+  }
+
+  // Safety fallback if iframe load event is suppressed
+  setTimeout(() => {
+    if (overlay) overlay.classList.add('hidden');
+  }, 3500);
+}
+
+async function detectServerSeed() {
+  await fetchWorldInfo(true);
+}
+
+async function applyCustomSeed() {
+  const input = document.getElementById('mapSeedInput');
+  const newSeed = (input && input.value ? input.value : '').trim();
+  if (!newSeed) {
+    showToast('Please enter a valid seed string');
+    return;
+  }
+
+  try {
+    const res = await apiFetch('/api/world/seed', {
+      method: 'POST',
+      body: JSON.stringify({ seed: newSeed })
+    });
+    const data = await res.json();
+    currentWorldSeed = data.seed;
+    const badgeSeed = document.getElementById('badgeActiveSeed');
+    if (badgeSeed) badgeSeed.textContent = currentWorldSeed;
+    loadMapInIframe(currentWorldSeed);
+    showToast(`Loaded map with seed: ${currentWorldSeed}`);
+  } catch (_) {
+    showToast('Error applying seed');
+  }
+}
+
+function openMapExternal() {
+  const input = document.getElementById('mapSeedInput');
+  const seed = currentWorldSeed || (input ? input.value.trim() : '');
+  const url = seed
+    ? `https://valheim-map.world/?seed=${encodeURIComponent(seed)}`
+    : 'https://valheim-map.world/';
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function copyMapLink() {
+  const input = document.getElementById('mapSeedInput');
+  const seed = currentWorldSeed || (input ? input.value.trim() : '');
+  const url = seed
+    ? `https://valheim-map.world/?seed=${encodeURIComponent(seed)}`
+    : 'https://valheim-map.world/';
+  copyToClipboard(url, document.getElementById('btnCopyMapLink'));
+}
+
 // ─── Bootstrap ───────────────────────────────────────────────────────────────
 (function bootstrap() {
   if (loadSession()) {

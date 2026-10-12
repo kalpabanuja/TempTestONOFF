@@ -669,8 +669,292 @@ html, body {
   transition: border-color 0.1s, box-shadow 0.1s;
 }
 
+/* ─── Navigation Tabs ─────────────────────────────────────────── */
+.nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(13, 15, 24, 0.7);
+  padding: 0.25rem 0.35rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 7px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav-tab:hover {
+  color: var(--text-primary);
+  background: rgba(200, 131, 42, 0.08);
+  border-color: rgba(200, 131, 42, 0.2);
+}
+
+.nav-tab.active {
+  background: linear-gradient(135deg, rgba(200, 131, 42, 0.22), rgba(217, 79, 26, 0.15));
+  border-color: var(--gold-mid);
+  color: var(--gold-bright);
+  box-shadow: 0 0 14px rgba(200, 131, 42, 0.2);
+}
+
+.nav-tab .tab-icon {
+  font-size: 0.85rem;
+}
+
+/* ─── Tab Panes ───────────────────────────────────────────────── */
+.tab-pane {
+  display: none;
+  animation: tabFadeIn 0.25s ease-out;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── World Map Panel ─────────────────────────────────────────── */
+.map-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.map-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.map-subtitle {
+  font-size: 0.8rem;
+  color: var(--gold-bright);
+  letter-spacing: 0.08em;
+  font-family: monospace;
+}
+
+.map-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-secondary.highlight {
+  border-color: var(--gold-mid);
+  color: var(--gold-bright);
+  background: rgba(200, 131, 42, 0.12);
+}
+
+.btn-secondary.highlight:hover {
+  background: rgba(200, 131, 42, 0.25);
+  box-shadow: 0 0 12px rgba(200, 131, 42, 0.3);
+}
+
+/* ─── Map Control Bar ─────────────────────────────────────────── */
+.map-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  background: rgba(13, 15, 24, 0.5);
+  border: 1px solid var(--border);
+  padding: 0.9rem 1.2rem;
+  border-radius: var(--radius);
+}
+
+.seed-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 280px;
+}
+
+.seed-label {
+  font-size: 0.68rem;
+  font-family: var(--font-display);
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.seed-input-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(8, 9, 14, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.2rem 0.35rem 0.2rem 0.75rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.seed-input-box:focus-within {
+  border-color: var(--gold-mid);
+  box-shadow: 0 0 10px rgba(200, 131, 42, 0.2);
+}
+
+.seed-rune {
+  color: var(--gold-mid);
+  font-size: 0.95rem;
+}
+
+.seed-input {
+  border: none !important;
+  background: transparent !important;
+  padding: 0.4rem 0 !important;
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.seed-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.btn-seed-apply {
+  background: linear-gradient(135deg, var(--gold-mid), var(--gold-dim));
+  border: none;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.btn-seed-apply:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.map-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.map-badge {
+  display: flex;
+  flex-direction: column;
+  background: rgba(18, 21, 31, 0.8);
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  min-width: 100px;
+}
+
+.badge-label {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  font-family: var(--font-display);
+}
+
+.badge-val {
+  font-size: 0.85rem;
+  color: var(--gold-bright);
+  font-weight: 600;
+  margin-top: 0.1rem;
+}
+
+/* ─── Map Frame Wrapper ───────────────────────────────────────── */
+.map-frame-wrapper {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 280px);
+  min-height: 650px;
+  background: #000;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8), 0 8px 30px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.world-map-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.map-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 9, 14, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  z-index: 10;
+  color: var(--gold-bright);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+.map-loading-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.map-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.map-footer strong {
+  color: var(--gold-bright);
+}
 
 /* ─── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .nav-tabs { order: 3; width: 100%; justify-content: center; margin-top: 0.5rem; }
+  .navbar { flex-wrap: wrap; }
+  .map-header { flex-direction: column; align-items: flex-start; }
+  .map-control-bar { flex-direction: column; }
+  .map-frame-wrapper { height: 500px; min-height: 400px; }
+}
+
 @media (max-width: 600px) {
   .control-grid { grid-template-columns: 1fr; }
   .navbar { padding: 0.8rem 1rem; }

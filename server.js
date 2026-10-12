@@ -315,6 +315,125 @@ app.get('/api/info', requireAuth, async (req, res) => {
   }
 });
 
+// ─── Helper: Extract world name & seed from Valheim save metadata ─────────────
+async function detectWorldSeed() {
+  let worldName = null;
+  let seed = null;
+
+  // 1. Detect world name from container env or recent logs
+  try {
+    const envWorld = await dockerCmd(`exec ${VALHEIM_CONTAINER} sh -c "echo \\$WORLD_NAME || echo \\$SERVER_WORLD"`);
+    if (envWorld && envWorld.trim() && !envWorld.includes('$')) {
+      worldName = envWorld.trim();
+    }
+  } catch (_) {}
+
+  // If not found in env, check recent logs
+  if (!worldName) {
+    try {
+      const logs = await new Promise((resolve) => {
+        exec(
+          `docker logs --tail 2000 ${VALHEIM_CONTAINER} 2>&1`,
+          { maxBuffer: 10 * 1024 * 1024 },
+          (err, stdout) => resolve(stdout || '')
+        );
+      });
+      const lines = logs.split('\n');
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const m = lines[i].match(/ZNet\.LoadWorld:\s*([^\s(]+)/i) ||
+                  lines[i].match(/Get create world\s+([^\s\r\n]+)/i) ||
+                  lines[i].match(/world:\s*([^\s,]+)/i);
+        if (m) {
+          worldName = m[1].trim();
+          break;
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (!worldName) worldName = 'Dedicated';
+
+  // 2. Find latest .fwl2 or .fwl file inside the container
+  try {
+    const findCmd = `exec ${VALHEIM_CONTAINER} sh -c "ls -t /config/worlds_local/${worldName}/_main.*.fwl2 /config/worlds_local/${worldName}.fwl /config/worlds_local/*/_main.*.fwl2 /config/worlds_local/*.fwl 2>/dev/null | head -n 1"`;
+    const fwlPath = (await dockerCmd(findCmd)).trim();
+
+    if (fwlPath) {
+      // Read first 256 bytes encoded in base64 to avoid binary stdout issues
+      const b64 = (await dockerCmd(`exec ${VALHEIM_CONTAINER} sh -c "head -c 256 '${fwlPath}' | base64"`)).replace(/\s+/g, '');
+      const buf = Buffer.from(b64, 'base64');
+
+      // Valheim C# BinaryWriter serializes string as:
+      // [7-bit encoded int length] + [UTF-8 bytes]
+      // Field 1: World Name, Field 2: World Seed
+      let offset = 0;
+      function read7BitInt() {
+        let count = 0, shift = 0;
+        while (shift < 35 && offset < buf.length) {
+          const byte = buf[offset++];
+          count |= (byte & 0x7f) << shift;
+          shift += 7;
+          if ((byte & 0x80) === 0) break;
+        }
+        return count;
+      }
+
+      // Read World Name
+      const nameLen = read7BitInt();
+      if (nameLen > 0 && offset + nameLen <= buf.length) {
+        const parsedName = buf.toString('utf8', offset, offset + nameLen);
+        offset += nameLen;
+        if (parsedName && parsedName.length > 0) {
+          worldName = parsedName;
+        }
+
+        // Read World Seed
+        const seedLen = read7BitInt();
+        if (seedLen > 0 && offset + seedLen <= buf.length) {
+          const parsedSeed = buf.toString('utf8', offset, offset + seedLen);
+          if (parsedSeed && parsedSeed.length > 0 && /^[\w\s.-]+$/.test(parsedSeed)) {
+            seed = parsedSeed;
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
+  return { worldName, seed };
+}
+
+// ─── GET /api/world ──────────────────────────────────────────────────────────
+app.get('/api/world', requireAuth, async (req, res) => {
+  try {
+    const data = await detectWorldSeed();
+    const finalSeed = data.seed || liveState.customSeed || null;
+    res.json({
+      worldName: data.worldName || 'Dedicated',
+      seed: finalSeed,
+      mapUrl: finalSeed
+        ? `https://valheim-map.world/?seed=${encodeURIComponent(finalSeed)}`
+        : 'https://valheim-map.world/'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/world/seed ────────────────────────────────────────────────────
+app.post('/api/world/seed', requireAuth, async (req, res) => {
+  const { seed } = req.body;
+  if (typeof seed === 'string') {
+    liveState.customSeed = seed.trim();
+  }
+  res.json({
+    success: true,
+    seed: liveState.customSeed,
+    mapUrl: liveState.customSeed
+      ? `https://valheim-map.world/?seed=${encodeURIComponent(liveState.customSeed)}`
+      : 'https://valheim-map.world/'
+  });
+});
+
 // ─── GET /api/events (SSE — instant info push) ───────────────────────────────────────
 app.get('/api/events', requireAuth, (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
