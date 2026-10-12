@@ -12,9 +12,11 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change_me_in_production';
 const VALHEIM_CONTAINER = process.env.VALHEIM_CONTAINER || 'valheim';
 
-// Pre-hash the admin password at startup
+// Pre-hash the admin and user credentials at startup
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD_PLAIN = process.env.ADMIN_PASSWORD || 'valheim123';
+const USER_USERNAME = process.env.USER_USERNAME || 'user';
+const USER_PASSWORD_PLAIN = process.env.USER_PASSWORD || 'valheimuser';
 
 app.use(cors());
 app.use(express.json());
@@ -249,7 +251,7 @@ function startLogWatcher() {
   });
 }
 
-// ─── Middleware: Auth ─────────────────────────────────────────────────────────
+// ─── Middleware: Auth & Roles ─────────────────────────────────────────────
 // SSE (EventSource) cannot send custom headers, so we also accept ?token= query param
 function requireAuth(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -264,6 +266,17 @@ function requireAuth(req, res, next) {
   });
 }
 
+// Admin-only middleware (for user activity, player IPs, and server control)
+function requireAdmin(req, res, next) {
+  requireAuth(req, res, () => {
+    if (req.user && req.user.role === 'admin') {
+      next();
+    } else {
+      res.status(403).json({ error: 'Access denied: Admin privileges required' });
+    }
+  });
+}
+
 // ─── POST /api/login ──────────────────────────────────────────────────────────
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
@@ -272,15 +285,16 @@ app.post('/api/login', async (req, res) => {
     return res.status(400).json({ error: 'Username and password required' });
   }
 
-  const usernameMatch = username === ADMIN_USERNAME;
-  const passwordMatch = password === ADMIN_PASSWORD_PLAIN;
+  const isAdmin = username === ADMIN_USERNAME && password === ADMIN_PASSWORD_PLAIN;
+  const isUser = username === USER_USERNAME && password === USER_PASSWORD_PLAIN;
 
-  if (!usernameMatch || !passwordMatch) {
+  if (!isAdmin && !isUser) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
 
-  const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '8h' });
-  res.json({ token, username });
+  const role = isAdmin ? 'admin' : 'user';
+  const token = jwt.sign({ username, role }, JWT_SECRET, { expiresIn: '8h' });
+  res.json({ token, username, role });
 });
 
 // ─── GET /api/status ─────────────────────────────────────────────────────────
@@ -297,7 +311,7 @@ app.get('/api/status', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/server/start ───────────────────────────────────────────────────
-app.post('/api/server/start', requireAuth, async (req, res) => {
+app.post('/api/server/start', requireAdmin, async (req, res) => {
   try {
     await dockerCmd(`start ${VALHEIM_CONTAINER}`);
     res.json({ success: true, message: 'Server starting...' });
@@ -307,7 +321,7 @@ app.post('/api/server/start', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/server/stop ────────────────────────────────────────────────────
-app.post('/api/server/stop', requireAuth, async (req, res) => {
+app.post('/api/server/stop', requireAdmin, async (req, res) => {
   try {
     await dockerCmd(`stop ${VALHEIM_CONTAINER}`);
     res.json({ success: true, message: 'Server stopped.' });
@@ -317,7 +331,7 @@ app.post('/api/server/stop', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/server/restart ─────────────────────────────────────────────────
-app.post('/api/server/restart', requireAuth, async (req, res) => {
+app.post('/api/server/restart', requireAdmin, async (req, res) => {
   try {
     await dockerCmd(`restart ${VALHEIM_CONTAINER}`);
     res.json({ success: true, message: 'Server restarting...' });
@@ -521,8 +535,8 @@ app.get('/api/logs', requireAuth, (req, res) => {
   });
 });
 
-// ─── GET /api/activity (filtered user audit & activity logs) ─────────────────
-app.get('/api/activity', requireAuth, (req, res) => {
+// ─── GET /api/activity (filtered user audit & activity logs — Admin Only) ───
+app.get('/api/activity', requireAdmin, (req, res) => {
   try {
     const events = activityTracker.getEvents(req.query);
     const stats = activityTracker.getStats(liveState.playerCount);
@@ -532,8 +546,8 @@ app.get('/api/activity', requireAuth, (req, res) => {
   }
 });
 
-// ─── GET /api/players (active & known player registry with IPs) ─────────────
-app.get('/api/players', requireAuth, async (req, res) => {
+// ─── GET /api/players (active & known player registry with IPs — Admin Only) ─
+app.get('/api/players', requireAdmin, async (req, res) => {
   try {
     await activityTracker.refreshClientSockets().catch(() => {});
     const players = activityTracker.getPlayers(liveState.players);
@@ -543,8 +557,8 @@ app.get('/api/players', requireAuth, async (req, res) => {
   }
 });
 
-// ─── POST /api/activity/clear (clear log history) ────────────────────────────
-app.post('/api/activity/clear', requireAuth, (req, res) => {
+// ─── POST /api/activity/clear (clear log history — Admin Only) ───────────────
+app.post('/api/activity/clear', requireAdmin, (req, res) => {
   try {
     const result = activityTracker.clearEvents();
     res.json(result);
@@ -553,8 +567,8 @@ app.post('/api/activity/clear', requireAuth, (req, res) => {
   }
 });
 
-// ─── GET /api/activity/export (export JSON / CSV) ───────────────────────────
-app.get('/api/activity/export', requireAuth, (req, res) => {
+// ─── GET /api/activity/export (export JSON / CSV — Admin Only) ──────────────
+app.get('/api/activity/export', requireAdmin, (req, res) => {
   try {
     const format = req.query.format || 'json';
     const events = activityTracker.getEvents({ limit: 5000 });
@@ -583,10 +597,11 @@ app.get('*', (req, res) => {
 // Bind on all interfaces so it's reachable via the server's public IP
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n⚔️  Valheim Admin Panel`);
-  console.log(`   Local:   http://localhost:${PORT}`);
-  console.log(`   Network: http://<server-ip>:${PORT}`);
+  console.log(`   Local:     http://localhost:${PORT}`);
+  console.log(`   Network:   http://<server-ip>:${PORT}`);
   console.log(`   Container: ${VALHEIM_CONTAINER}`);
-  console.log(`   Login: ${ADMIN_USERNAME} / ${ADMIN_PASSWORD_PLAIN}\n`);
+  console.log(`   Admin:     ${ADMIN_USERNAME} / ${ADMIN_PASSWORD_PLAIN} (Full Access)`);
+  console.log(`   User:      ${USER_USERNAME} / ${USER_PASSWORD_PLAIN} (Dashboard Only)\n`);
 
   // Initialize activity tracker with broadcast callback
   activityTracker.init({

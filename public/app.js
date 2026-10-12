@@ -3,6 +3,8 @@
    ═══════════════════════════════════════════════════════════════ */
 
 let authToken = null;
+let currentUserRole = 'admin';
+let currentUsername = 'admin';
 let logEventSource = null;
 let logLines = [];
 let logPaused = false;
@@ -72,15 +74,21 @@ function showView(name) {
 }
 
 // ─── Session persistence ──────────────────────────────────────────────────────
-function saveSession(token) {
+function saveSession(token, role = 'admin', username = 'admin') {
   authToken = token;
+  currentUserRole = role || 'user';
+  currentUsername = username || 'admin';
   sessionStorage.setItem('vh_token', token);
+  sessionStorage.setItem('vh_role', currentUserRole);
+  sessionStorage.setItem('vh_user', currentUsername);
 }
 
 function loadSession() {
   const token = sessionStorage.getItem('vh_token');
   if (token) {
     authToken = token;
+    currentUserRole = sessionStorage.getItem('vh_role') || 'user';
+    currentUsername = sessionStorage.getItem('vh_user') || 'admin';
     return true;
   }
   return false;
@@ -88,7 +96,11 @@ function loadSession() {
 
 function clearSession() {
   authToken = null;
+  currentUserRole = 'user';
+  currentUsername = '';
   sessionStorage.removeItem('vh_token');
+  sessionStorage.removeItem('vh_role');
+  sessionStorage.removeItem('vh_user');
 }
 
 // ─── API helper ───────────────────────────────────────────────────────────────
@@ -96,7 +108,7 @@ async function apiFetch(path, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
   const res = await fetch(path, { ...options, headers });
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     logout();
     throw new Error('Session expired');
   }
@@ -130,7 +142,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const data = await res.json();
 
     if (res.ok) {
-      saveSession(data.token);
+      saveSession(data.token, data.role, data.username);
       initDashboard();
     } else {
       errorText.textContent = data.error || 'Invalid credentials';
@@ -163,6 +175,7 @@ document.getElementById('logoutBtn').addEventListener('click', logout);
 // ─── Dashboard init ───────────────────────────────────────────────────────────
 function initDashboard() {
   showView('dashboard');
+  applyRolePermissions();
   fetchStatus();
   statusPollInterval = setInterval(fetchStatus, 10000);
   startEventStream();   // live push for player count + join code
@@ -463,7 +476,57 @@ let activityFilterTimeout = null;
 let currentActivityEvents = [];
 let knownPlayersList = [];
 
+// ─── Role Permissions & Tab Guard ──────────────────────────────────────────
+function applyRolePermissions() {
+  const isAdmin = currentUserRole === 'admin';
+
+  // 1. Navbar Role Badge
+  const roleBadge = document.getElementById('userRoleBadge');
+  const roleIcon = document.getElementById('userRoleIcon');
+  const roleName = document.getElementById('userRoleName');
+  if (roleBadge) {
+    roleBadge.className = `user-role-badge ${isAdmin ? 'role-admin' : 'role-user'}`;
+    if (roleIcon) roleIcon.textContent = isAdmin ? '👑' : '🛡';
+    if (roleName) roleName.textContent = isAdmin ? `Admin (${currentUsername})` : `User (${currentUsername})`;
+  }
+
+  // 2. User Activity Nav Tab: Only admin can see user activity
+  const tabActivity = document.getElementById('tabBtnActivity');
+  if (tabActivity) {
+    tabActivity.style.display = isAdmin ? 'inline-flex' : 'none';
+  }
+
+  // If user is currently on activity tab and is not admin, force back to dashboard
+  if (!isAdmin && currentActiveTab === 'activity') {
+    switchTab('dashboard');
+  }
+
+  // 3. Server Controls: Admin can manage, regular user gets view-only notice
+  const notice = document.getElementById('userViewOnlyNotice');
+  if (notice) {
+    notice.classList.toggle('hidden', isAdmin);
+  }
+
+  const ctrlBtns = document.querySelectorAll('.ctrl-btn');
+  ctrlBtns.forEach((btn) => {
+    btn.disabled = !isAdmin;
+    if (!isAdmin) {
+      btn.title = 'Admin privileges required to manage server state';
+      btn.classList.add('disabled-user');
+    } else {
+      btn.title = '';
+      btn.classList.remove('disabled-user');
+    }
+  });
+}
+
 function switchTab(tab) {
+  // Guard: Only admin can view user activity
+  if (tab === 'activity' && currentUserRole !== 'admin') {
+    showToast('✘ Access Denied: Only administrators can view User Activity.', true);
+    tab = 'dashboard';
+  }
+
   currentActiveTab = tab;
 
   // Toggle tab buttons
@@ -803,6 +866,9 @@ function filterSuspiciousOnly() {
 
 // Live activity received via SSE
 function onLiveActivityReceived(event) {
+  // Only admins receive and render activity updates
+  if (currentUserRole !== 'admin') return;
+
   const navBadge = document.getElementById('suspiciousNavBadge');
   if (navBadge && (event.type === 'suspicious' || event.severity === 'danger')) {
     navBadge.classList.remove('hidden');

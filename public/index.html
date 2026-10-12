@@ -69,6 +69,10 @@
           <span class="btn-text">ENTER THE REALM</span>
           <span class="btn-spinner hidden">◌</span>
         </button>
+
+        <div class="login-role-hint">
+          <span>⚔ Roles: <strong>admin</strong> (Full Realm Control) &bull; <strong>user</strong> (Dashboard View)</span>
+        </div>
       </form>
     </div>
   </div>
@@ -95,6 +99,11 @@
         </button>
       </div>
       <div class="nav-actions">
+        <!-- User Role Badge -->
+        <div class="user-role-badge" id="userRoleBadge" title="Current session role">
+          <span class="role-icon" id="userRoleIcon">👑</span>
+          <span class="role-name" id="userRoleName">Admin</span>
+        </div>
         <div class="status-badge" id="statusBadge">
           <span class="status-dot" id="statusDot"></span>
           <span class="status-label" id="statusLabel">Checking...</span>
@@ -111,14 +120,21 @@
       <div id="tabContentDashboard" class="tab-pane active">
 
         <!-- Server Control Panel -->
-        <section class="panel control-panel">
+        <section class="panel control-panel" id="controlPanelSection">
           <div class="panel-header">
             <h2 class="panel-title">
               <span class="panel-icon">⚙</span> Server Control
             </h2>
             <div class="divider-rune">᛬</div>
           </div>
-          <div class="control-grid">
+
+          <!-- View-only banner shown to regular users -->
+          <div id="userViewOnlyNotice" class="view-only-notice hidden">
+            <span class="notice-icon">🛡</span>
+            <span><strong>Dashboard View Mode:</strong> Logged in as regular user. Server power controls and User Activity logs are restricted to admins.</span>
+          </div>
+
+          <div class="control-grid" id="controlGrid">
 
             <button id="btnStart" class="ctrl-btn start" onclick="serverAction('start')">
               <span class="ctrl-icon">▶</span>
