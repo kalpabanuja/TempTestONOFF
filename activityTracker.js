@@ -29,6 +29,8 @@ class ActivityTracker {
     this.containerName = 'valheim';
     this.dockerCmdFn = null;
     this.onNewEventCallback = null;
+    this.peerToName = new Map(); // PeerID -> PlayerName
+    this.currentlyOnline = new Set(); // Set of currently active character names
   }
 
   init({ containerName, dockerCmd, onNewEvent }) {
@@ -64,6 +66,29 @@ class ActivityTracker {
         const data = JSON.parse(raw);
         this.events = Array.isArray(data.events) ? data.events : [];
         this.players = typeof data.players === 'object' && data.players !== null ? data.players : {};
+
+        // Scrub any corrupted / dummy players from previous parser versions
+        for (const key of Object.keys(this.players)) {
+          if (
+            key.startsWith('playfab/') ||
+            key.startsWith('steam/') ||
+            key.startsWith('Client (') ||
+            key === 'Connected Viking' ||
+            key === '0:0' ||
+            key === 'System' ||
+            key === 'World' ||
+            key === 'Security Alert' ||
+            key === 'Security System'
+          ) {
+            delete this.players[key];
+          }
+        }
+
+        // Scrub duplicate dummy leave events from previous parser
+        this.events = this.events.filter(
+          (e) => e.player !== 'Connected Viking' && !(e.player && e.player.startsWith('playfab/'))
+        );
+
         console.log(`[activity] Loaded ${this.events.length} historical events and ${Object.keys(this.players).length} players.`);
       }
     } catch (err) {
@@ -139,6 +164,27 @@ class ActivityTracker {
     if (!name || name === '0:0' || name === '<null>') return;
     const cleanName = name.trim();
 
+    // Prevent internal server tags, socket strings, or dummy names from creating player records
+    if (
+      cleanName.startsWith('playfab/') ||
+      cleanName.startsWith('steam/') ||
+      cleanName.startsWith('Client (') ||
+      cleanName === 'Connected Viking' ||
+      cleanName === 'System' ||
+      cleanName === 'World' ||
+      cleanName === 'Security Alert' ||
+      cleanName === 'Security System' ||
+      cleanName.length < 2
+    ) {
+      return;
+    }
+
+    if (online) {
+      this.currentlyOnline.add(cleanName);
+    } else {
+      this.currentlyOnline.delete(cleanName);
+    }
+
     if (!this.players[cleanName]) {
       this.players[cleanName] = {
         name: cleanName,
@@ -164,6 +210,12 @@ class ActivityTracker {
   setPlayerStatus(name, online, timestamp = Date.now()) {
     if (!name) return;
     const cleanName = name.trim();
+    if (online) {
+      this.currentlyOnline.add(cleanName);
+    } else {
+      this.currentlyOnline.delete(cleanName);
+    }
+
     if (this.players[cleanName]) {
       this.players[cleanName].status = online ? 'online' : 'offline';
       this.players[cleanName].lastSeen = Math.max(this.players[cleanName].lastSeen || 0, timestamp);
@@ -287,6 +339,17 @@ class ActivityTracker {
 
     const timestamp = forcedTimestamp || this.parseTimestamp(line);
 
+    // 0. Server start / restart detected — reset session states
+    if (/DungeonDB Start|Game server connected|Valheim version/i.test(line)) {
+      for (const p of Object.values(this.players)) {
+        p.status = 'offline';
+      }
+      this.currentlyOnline.clear();
+      this.peerToName.clear();
+      this.save();
+      return null;
+    }
+
     // 1. PlayFab Error 4098 / Handle Invalidation (SUSPICIOUS / DANGER)
     if (/PlayFab network error.*code\s*'4098'|Failed to send,\s*suspend TX on playfab/i.test(line)) {
       const matchPlayer = line.match(/session\s*'([^']+)'/i) || line.match(/playfab\/([A-Za-z0-9]+)/i);
@@ -316,13 +379,45 @@ class ActivityTracker {
       });
     }
 
-    // 3. Player Join / Spawn: "Got character ZDOID from <Name> : <id>" (ignore death 0:0)
-    const joinMatch = line.match(/Got character ZDOID from\s+(.+?)\s*:\s*(?!0:0)([-0-9]+:[-0-9]+)/i);
-    if (joinMatch) {
-      const name = joinMatch[1].trim();
-      const zdoid = joinMatch[2].trim();
+    // 3. Got character ZDOID:
+    // Format: "Got character ZDOID from <CharacterName> : <PeerID>:<ZDOID>"
+    // Case A: Death -> "Got character ZDOID from <CharacterName> : 0:0"
+    // Case B: Spawn / Respawn -> "Got character ZDOID from <CharacterName> : 1695201500:2"
+    const zdoidMatch = line.match(/Got character ZDOID from\s+(.+?)\s*:\s*([-0-9]+):([-0-9]+)/i);
+    if (zdoidMatch) {
+      const name = zdoidMatch[1].trim();
+      const peerId = zdoidMatch[2].trim();
+      const zdoid = zdoidMatch[3].trim();
 
+      // Case A: Death (0:0)
+      if (peerId === '0' && zdoid === '0') {
+        this.setPlayerStatus(name, true, timestamp);
+        return this.recordEvent({
+          player: name,
+          type: 'death',
+          severity: 'warn',
+          title: 'Viking Fallen in Battle',
+          details: 'Character perished in battle (ZDOID reset to 0:0). Respawn pending.',
+          raw: line,
+          timestamp,
+        });
+      }
+
+      // Case B: Character Spawn or Respawn
+      if (peerId && peerId !== '0') {
+        this.peerToName.set(peerId, name);
+      }
+
+      const isAlreadyOnline = this.currentlyOnline.has(name);
+      this.currentlyOnline.add(name);
       this.registerPlayer(name, { online: true, timestamp });
+
+      if (isAlreadyOnline) {
+        // Player is already online: respawn after death or portal teleport.
+        // Do NOT log a duplicate "Viking Joined Realm" join event!
+        return null;
+      }
+
       this.checkReconnectSpam(name, timestamp);
 
       return this.recordEvent({
@@ -330,30 +425,13 @@ class ActivityTracker {
         type: 'join',
         severity: 'info',
         title: 'Viking Joined Realm',
-        details: `Character spawned into world (ZDOID: ${zdoid}).`,
+        details: `Character spawned into world (Peer: ${peerId}, ZDOID: ${zdoid}).`,
         raw: line,
         timestamp,
       });
     }
 
-    // 4. Player Death: "Got character ZDOID from <Name> : 0:0"
-    const deathMatch = line.match(/Got character ZDOID from\s+(.+?)\s*:\s*0:0/i);
-    if (deathMatch) {
-      const name = deathMatch[1].trim();
-      this.registerPlayer(name, { online: true, timestamp });
-
-      return this.recordEvent({
-        player: name,
-        type: 'death',
-        severity: 'warn',
-        title: 'Viking Fallen in Battle',
-        details: `Character perished in battle (ZDOID reset to 0:0). Respawn pending.`,
-        raw: line,
-        timestamp,
-      });
-    }
-
-    // 5. In-Game Modded / Combat Death ("Player <Name> died" / "slain by")
+    // 4. In-Game Modded / Combat Death ("Player <Name> died" / "slain by")
     const slainMatch = line.match(/(?:Player\s+)?([A-Za-z0-9_]+)\s+(?:was killed by|died to|was slain by|fell victim to)\s+(.+)/i);
     if (slainMatch) {
       const name = slainMatch[1].trim();
@@ -371,22 +449,86 @@ class ActivityTracker {
       });
     }
 
-    // 6. Player Disconnect: "Closing socket <id>" / "Disposing socket"
-    const closeSocketMatch = line.match(/Closing socket\s+([0-9]+|playfab\/[A-Za-z0-9]+)/i);
-    if (closeSocketMatch || /Disposing socket|Destroying abandoned non persistent zdo/i.test(line)) {
-      const socketId = closeSocketMatch ? closeSocketMatch[1] : '';
+    // 5. Disconnect via abandoned non-persistent ZDO (maps owner PeerID directly to character)
+    const abandonedZdoMatch = line.match(/Destroying abandoned non persistent zdo\s+[-0-9:]+\s+owner\s+([-0-9]+)/i);
+    if (abandonedZdoMatch) {
+      const ownerPeerId = abandonedZdoMatch[1].trim();
+      const playerName = this.peerToName.get(ownerPeerId);
+
+      if (playerName && this.currentlyOnline.has(playerName)) {
+        this.currentlyOnline.delete(playerName);
+        this.setPlayerStatus(playerName, false, timestamp);
+
+        return this.recordEvent({
+          player: playerName,
+          type: 'leave',
+          severity: 'info',
+          title: 'Viking Departed Realm',
+          details: `${playerName} disconnected from the realm.`,
+          raw: line,
+          timestamp,
+        });
+      }
+      return null;
+    }
+
+    // Authoritative "Player connection lost server ... now 0 player(s)"
+    const connLostMatch = line.match(/Player connection lost server .* now\s+(\d+)\s+player\(s\)/i);
+    if (connLostMatch) {
+      const remainingCount = parseInt(connLostMatch[1], 10);
+      if (remainingCount === 0) {
+        for (const p of this.currentlyOnline) {
+          this.setPlayerStatus(p, false, timestamp);
+        }
+        this.currentlyOnline.clear();
+      }
+      return null;
+    }
+
+    // 6. World Events: Raids
+    const raidStartMatch = line.match(/Random event '([^']+)' started|Random event set:([a-zA-Z0-9_]+)/i);
+    if (raidStartMatch) {
+      const eventName = raidStartMatch[1] || raidStartMatch[2];
       return this.recordEvent({
-        player: socketId ? `Client (${socketId})` : 'Connected Viking',
-        type: 'leave',
-        severity: 'info',
-        title: 'Viking Departed Realm',
-        details: `Network socket closed. Player left the server.`,
+        player: 'World',
+        type: 'action',
+        severity: 'warn',
+        title: 'Raid Event Started',
+        details: `A world event has begun: "${eventName}".`,
         raw: line,
         timestamp,
       });
     }
 
-    // 7. Modded/Server In-Game Action: Mining / Harvesting Resources
+    const raidEndMatch = line.match(/Random event '([^']+)' ended/i);
+    if (raidEndMatch) {
+      const eventName = raidEndMatch[1];
+      return this.recordEvent({
+        player: 'World',
+        type: 'action',
+        severity: 'info',
+        title: 'Raid Event Ended',
+        details: `World event "${eventName}" has ended.`,
+        raw: line,
+        timestamp,
+      });
+    }
+
+    // 7. World Save
+    const worldSaveMatch = line.match(/World saved\s*\(\s*([0-9.]+\s*ms)\s*\)/i);
+    if (worldSaveMatch) {
+      return this.recordEvent({
+        player: 'World',
+        type: 'info',
+        severity: 'info',
+        title: 'World Saved',
+        details: `Game world state written to disk (${worldSaveMatch[1]}).`,
+        raw: line,
+        timestamp,
+      });
+    }
+
+    // 8. Modded/Server In-Game Action: Mining / Harvesting Resources
     const mineMatch = line.match(/(?:Player\s+)?([A-Za-z0-9_]+)\s+(?:mined|harvested|chopped|collected|gathered)\s+(.+)/i);
     if (mineMatch) {
       const name = mineMatch[1].trim();
@@ -404,7 +546,7 @@ class ActivityTracker {
       });
     }
 
-    // 8. Modded/Server In-Game Action: Monster Kills
+    // 9. Modded/Server In-Game Action: Monster Kills
     const killMatch = line.match(/(?:Player\s+)?([A-Za-z0-9_]+)\s+(?:killed|slayed|slew|defeated|destroyed)\s+(.+)/i);
     if (killMatch) {
       const name = killMatch[1].trim();
@@ -422,12 +564,12 @@ class ActivityTracker {
       });
     }
 
-    // 9. World Chat / Shout: "<Player> message" or "Player shouts: message"
+    // 10. World Chat / Shout: "<Player> message" or "Player shouts: message"
     const chatMatch = line.match(/^(?:<([A-Za-z0-9_ ]+)>|([A-Za-z0-9_ ]+)\s*(?:shouts|says|whispers):\s*)(.+)/i);
     if (chatMatch) {
       const sender = (chatMatch[1] || chatMatch[2] || '').trim();
       const message = (chatMatch[3] || '').trim();
-      if (sender && !sender.toLowerCase().includes('server')) {
+      if (sender && !sender.toLowerCase().includes('server') && !sender.toLowerCase().includes('valheim')) {
         this.registerPlayer(sender, { online: true, timestamp });
         return this.recordEvent({
           player: sender,
@@ -441,24 +583,14 @@ class ActivityTracker {
       }
     }
 
-    // 10. Handshake detection (capture SteamID or IP)
+    // 11. Handshake detection (capture client IP without creating dummy player)
     const handshakeMatch = line.match(/Got handshake from client\s+([A-Za-z0-9_/-]+)/i);
     if (handshakeMatch) {
-      const platformId = handshakeMatch[1];
-      // Refresh active sockets asynchronously to catch new IP
       this.refreshClientSockets().catch(() => {});
-      return this.recordEvent({
-        player: platformId,
-        type: 'join',
-        severity: 'info',
-        title: 'Handshake Established',
-        details: `Connection handshake received from ${platformId}`,
-        raw: line,
-        timestamp,
-      });
+      return null; // Don't create dummy player card for playfab/... or steam/...
     }
 
-    // 11. Banned or Unauthorized access attempts (SUSPICIOUS)
+    // 12. Banned or Unauthorized access attempts (SUSPICIOUS)
     if (/blocked players|banned player|not in whitelist/i.test(line)) {
       return this.recordEvent({
         player: 'Security System',
@@ -471,7 +603,7 @@ class ActivityTracker {
       });
     }
 
-    // 12. Item Spawns & Console Cheats (SUSPICIOUS)
+    // 13. Item Spawns & Console Cheats (SUSPICIOUS)
     const spawnMatch = line.match(/(?:Player\s+)?([A-Za-z0-9_]+)\s+(?:spawned|used console to spawn|cheated|spawn command:)\s+(.+)/i);
     if (spawnMatch) {
       const name = spawnMatch[1].trim();
@@ -488,7 +620,7 @@ class ActivityTracker {
       });
     }
 
-    // 13. ServerCharacters / AntiCheat Foreign Item Alerts (SUSPICIOUS)
+    // 14. ServerCharacters / AntiCheat Foreign Item Alerts (SUSPICIOUS)
     if (/AntiCheat|ServerCharacters|Illegal item|Foreign item|Inventory mismatch|blocked spawn|Cheat detected/i.test(line)) {
       const matchPlayer = line.match(/(?:Player|from|character)\s+([A-Za-z0-9_]+)/i);
       const player = matchPlayer ? matchPlayer[1] : 'Security Alert';
@@ -504,6 +636,123 @@ class ActivityTracker {
     }
 
     return null;
+  }
+
+  // Ingest events from DiscordConnector or other BepInEx webhooks
+  ingestModMessage({ rawMessage, author, title, raw }) {
+    if (!rawMessage) return null;
+    const timestamp = Date.now();
+    const text = rawMessage.trim();
+
+    // 1. Player Joined (e.g. "Kalpa has arrived!" or "Kalpa joined the game")
+    const joinMatch = text.match(/^(.+?)\s+(?:has arrived|has joined|joined the (?:server|game)|connected)/i);
+    if (joinMatch) {
+      const player = joinMatch[1].trim();
+      this.currentlyOnline.add(player);
+      this.registerPlayer(player, { online: true, timestamp });
+      return this.recordEvent({
+        player,
+        type: 'join',
+        severity: 'info',
+        title: 'Viking Joined Realm',
+        details: text,
+        raw,
+        timestamp,
+      });
+    }
+
+    // 2. Player Left (e.g. "Kalpa has left." or "Kalpa left the game" or "Kalpa disconnected")
+    const leaveMatch = text.match(/^(.+?)\s+(?:has left|left the (?:server|game)|disconnected)/i);
+    if (leaveMatch) {
+      const player = leaveMatch[1].trim();
+      this.currentlyOnline.delete(player);
+      this.setPlayerStatus(player, false, timestamp);
+      return this.recordEvent({
+        player,
+        type: 'leave',
+        severity: 'info',
+        title: 'Viking Departed Realm',
+        details: text,
+        raw,
+        timestamp,
+      });
+    }
+
+    // 3. Player Death (e.g. "Kalpa died." or "Kalpa was killed by Troll")
+    const deathMatch = text.match(/^(.+?)\s+(?:died|was killed by|perished|succumbed|fell victim to)\s*(.*)/i);
+    if (deathMatch) {
+      const player = deathMatch[1].trim();
+      const cause = deathMatch[2]?.trim();
+      this.registerPlayer(player, { online: true, timestamp });
+      return this.recordEvent({
+        player,
+        type: 'death',
+        severity: 'warn',
+        title: 'Viking Fallen in Battle',
+        details: cause ? `Slain by ${cause}` : text,
+        raw,
+        timestamp,
+      });
+    }
+
+    // 4. Shout / Chat (e.g. "Kalpa: hello everyone" or "Kalpa shouts: help me")
+    const chatMatch = text.match(/^(.+?)\s*(?:shouts|says|whispers)?:?\s*[:"]\s*(.+)/i);
+    if (chatMatch) {
+      const player = chatMatch[1].trim();
+      const chat = chatMatch[2].trim();
+      if (player.toLowerCase() !== 'server' && player.toLowerCase() !== 'valheim') {
+        this.registerPlayer(player, { online: true, timestamp });
+        return this.recordEvent({
+          player,
+          type: 'action',
+          severity: 'info',
+          title: 'World Shout / Chat',
+          details: `"${chat.replace(/^"|"$/g, '')}"`,
+          raw,
+          timestamp,
+        });
+      }
+    }
+
+    // 5. Map Ping (e.g. "Kalpa pinged the map")
+    const pingMatch = text.match(/^(.+?)\s+pinged the map/i);
+    if (pingMatch) {
+      const player = pingMatch[1].trim();
+      this.registerPlayer(player, { online: true, timestamp });
+      return this.recordEvent({
+        player,
+        type: 'action',
+        severity: 'info',
+        title: 'Map Ping',
+        details: `${player} pinged coordinates on the world map.`,
+        raw,
+        timestamp,
+      });
+    }
+
+    // 6. World Event / Raid (e.g. "The forest is moving..." or "A cold wind blows from the mountains")
+    if (/forest is moving|foul smell|cold wind|ground is shaking|army of|skeleton surprise|hunt/i.test(text)) {
+      return this.recordEvent({
+        player: 'World',
+        type: 'action',
+        severity: 'warn',
+        title: 'Raid Event',
+        details: text,
+        raw,
+        timestamp,
+      });
+    }
+
+    // 7. General mod action
+    return this.recordEvent({
+      player: author && author !== 'Valheim' ? author : 'Mod',
+      type: 'action',
+      severity: 'info',
+      title: title || 'Server Event',
+      details: text,
+      raw,
+      timestamp,
+    });
   }
 
   // Backfill history from existing container logs on startup
@@ -574,9 +823,12 @@ class ActivityTracker {
   // Get list of all known players
   getPlayers(onlinePlayerNames = []) {
     const list = Object.values(this.players).map((p) => {
-      const isOnline = Array.isArray(onlinePlayerNames)
-        ? onlinePlayerNames.some((name) => name.toLowerCase() === p.name.toLowerCase())
-        : p.status === 'online';
+      let isOnline = false;
+      if (Array.isArray(onlinePlayerNames) && onlinePlayerNames.length > 0) {
+        isOnline = onlinePlayerNames.some((name) => name.toLowerCase() === p.name.toLowerCase());
+      } else {
+        isOnline = (this.currentlyOnline && this.currentlyOnline.has(p.name)) || p.status === 'online';
+      }
 
       return {
         ...p,
@@ -597,10 +849,13 @@ class ActivityTracker {
     const totalPlayers = Object.keys(this.players).length;
     const totalEvents = this.events.length;
     const suspiciousEvents = this.events.filter((e) => e.type === 'suspicious' || e.severity === 'danger').length;
+    const computedOnline = typeof onlineCount === 'number' && onlineCount >= 0 
+      ? onlineCount 
+      : (this.currentlyOnline ? this.currentlyOnline.size : 0);
 
     return {
       totalPlayers,
-      onlinePlayers: onlineCount,
+      onlinePlayers: computedOnline,
       totalEvents,
       suspiciousEvents,
       retentionDays: RETENTION_DAYS,

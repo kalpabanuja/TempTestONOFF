@@ -64,25 +64,27 @@ async function getAccurateServerInfo() {
   let playerCount = null;
   let playersList = [];
 
-  // 1. Try valheim-status inside the container (authoritative Steam A2S query)
+  // 1. Check valheim-status inside container (works for vanilla Steam A2S query)
+  let a2sCount = null;
+  let a2sPlayers = [];
   try {
     const raw = await dockerCmd(`exec ${VALHEIM_CONTAINER} valheim-status`);
     const status = JSON.parse(raw);
     if (status && typeof status.player_count === 'number' && !status.error) {
-      playerCount = status.player_count;
+      a2sCount = status.player_count;
       if (Array.isArray(status.players)) {
-        playersList = status.players.map((p) => p.name).filter(Boolean);
+        a2sPlayers = status.players.map((p) => p.name).filter(Boolean);
       }
     }
   } catch (_) {
-    // valheim-status not available or query port timed out — fall back to log parsing
+    // valheim-status not available or query port timed out
   }
 
-  // 2. Read recent logs for Join Code (and player count fallback if query port did not answer)
+  // 2. Read recent logs for Join Code, authoritative player count, and character names
   try {
     const logs = await new Promise((resolve) => {
       exec(
-        `docker logs --tail 2000 ${VALHEIM_CONTAINER} 2>&1`,
+        `docker logs --tail 3000 ${VALHEIM_CONTAINER} 2>&1`,
         { maxBuffer: 10 * 1024 * 1024 },
         (err, stdout) => resolve(stdout || '')
       );
@@ -100,38 +102,99 @@ async function getAccurateServerInfo() {
       }
     }
 
-    // Fallback: Accurate log parser with death filtering and name deduplication
-    if (playerCount === null) {
-      let startIdx = 0;
-      for (let i = lines.length - 1; i >= 0; i--) {
-        if (/DungeonDB Start|Game server connected|Valheim version/i.test(lines[i])) {
-          startIdx = i;
-          break;
+    // Locate the start of the current server session
+    let startIdx = 0;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (/DungeonDB Start|Game server connected|Valheim version|ZNet scene started/i.test(lines[i])) {
+        startIdx = i;
+        break;
+      }
+    }
+
+    const sessionLines = lines.slice(startIdx);
+    const sessionPlayers = new Set();
+    const peerToName = new Map();
+    let lastAuthoritativeCount = null;
+
+    for (const line of sessionLines) {
+      // Authoritative count lines natively printed by Valheim dedicated server:
+      const joinCountMatch = line.match(/Player joined server .* now\s+(\d+)\s+player\(s\)/i);
+      if (joinCountMatch) {
+        lastAuthoritativeCount = parseInt(joinCountMatch[1], 10);
+      }
+
+      const leaveCountMatch = line.match(/Player connection lost server .* now\s+(\d+)\s+player\(s\)/i);
+      if (leaveCountMatch) {
+        lastAuthoritativeCount = parseInt(leaveCountMatch[1], 10);
+        if (lastAuthoritativeCount === 0) {
+          sessionPlayers.clear();
         }
       }
 
-      const sessionLines = lines.slice(startIdx);
-      const onlinePlayers = new Set();
-
-      for (const line of sessionLines) {
-        // Player join/spawn: ignore death (0:0)
-        const joinMatch = line.match(/Got character ZDOID from\s+(.+?)\s*:\s*(?!0:0)([-0-9]+:[-0-9]+)/i);
-        if (joinMatch) {
-          const name = joinMatch[1].trim();
-          if (name) onlinePlayers.add(name);
+      const activeMatch = line.match(/Session .* is active with\s+(\d+)\s+player\(s\)/i);
+      if (activeMatch) {
+        lastAuthoritativeCount = parseInt(activeMatch[1], 10);
+        if (lastAuthoritativeCount === 0) {
+          sessionPlayers.clear();
         }
+      }
 
-        // Disconnect: remove from set
-        if (/Closing socket|Disposing socket|Destroying abandoned non persistent zdo/i.test(line)) {
-          if (onlinePlayers.size > 0) {
-            const first = onlinePlayers.values().next().value;
-            onlinePlayers.delete(first);
+      const connMatch = line.match(/Connections\s+(\d+)\s+ZDOS:/i);
+      if (connMatch) {
+        lastAuthoritativeCount = parseInt(connMatch[1], 10);
+        if (lastAuthoritativeCount === 0) {
+          sessionPlayers.clear();
+        }
+      }
+
+      // Character spawn: "Got character ZDOID from <CharacterName> : <PeerID>:<ZDOID>"
+      const charMatch = line.match(/Got character ZDOID from\s+(.+?)\s*:\s*([-0-9]+):([-0-9]+)/i);
+      if (charMatch) {
+        const charName = charMatch[1].trim();
+        const peerId = charMatch[2].trim();
+        const zdoid = charMatch[3].trim();
+        // Ignore death (0:0)
+        if (peerId !== '0' || zdoid !== '0') {
+          if (charName && !charName.startsWith('playfab/')) {
+            sessionPlayers.add(charName);
+            if (peerId && peerId !== '0') {
+              peerToName.set(peerId, charName);
+            }
           }
         }
       }
 
-      playerCount = onlinePlayers.size;
-      playersList = Array.from(onlinePlayers);
+      // Disconnect: "Destroying abandoned non persistent zdo <ZDOID> owner <PeerID>"
+      const zdoMatch = line.match(/Destroying abandoned non persistent zdo\s+[-0-9:]+\s+owner\s+([-0-9]+)/i);
+      if (zdoMatch) {
+        const ownerPeerId = zdoMatch[1].trim();
+        const disconnectedPlayer = peerToName.get(ownerPeerId);
+        if (disconnectedPlayer) {
+          sessionPlayers.delete(disconnectedPlayer);
+        }
+      }
+    }
+
+    // Merge any A2S names (if available)
+    if (a2sPlayers.length > 0) {
+      a2sPlayers.forEach((p) => sessionPlayers.add(p));
+    }
+
+    playersList = Array.from(sessionPlayers);
+
+    // Compute final player count:
+    // If the server log reported an authoritative count, use max of count and detected players.
+    // If PlayFab crossplay is active, valheim-status query returns 0, so logs are prioritized.
+    if (lastAuthoritativeCount !== null) {
+      playerCount = Math.max(lastAuthoritativeCount, playersList.length);
+    } else if (a2sCount !== null && a2sCount > 0) {
+      playerCount = Math.max(a2sCount, playersList.length);
+    } else {
+      playerCount = playersList.length;
+    }
+
+    if (playerCount === 0) {
+      playersList = [];
     }
   } catch (_) {}
 
@@ -221,17 +284,56 @@ function startLogWatcher() {
       return;
     }
 
-    // Player joined (ignore death 0:0)
-    const playerJoin = line.match(/Got character ZDOID from\s+(.+?)\s*:\s*(?!0:0)([-0-9]+:[-0-9]+)/i);
-    if (playerJoin) {
-      console.log(`[watcher] Player join/spawn: ${playerJoin[1]}`);
+    // Authoritative player joined count
+    const joinCountMatch = line.match(/Player joined server .* now\s+(\d+)\s+player\(s\)/i);
+    if (joinCountMatch) {
+      liveState.playerCount = parseInt(joinCountMatch[1], 10);
       triggerSync('player_join');
       return;
     }
 
-    // Player left
+    // Authoritative player left count
+    const leaveCountMatch = line.match(/Player connection lost server .* now\s+(\d+)\s+player\(s\)/i);
+    if (leaveCountMatch) {
+      const remaining = parseInt(leaveCountMatch[1], 10);
+      liveState.playerCount = remaining;
+      if (remaining === 0) {
+        liveState.players = [];
+      }
+      triggerSync('player_leave');
+      return;
+    }
+
+    // Periodic heartbeat connection count
+    const connMatch = line.match(/Connections\s+(\d+)\s+ZDOS:/i);
+    if (connMatch) {
+      const remaining = parseInt(connMatch[1], 10);
+      liveState.playerCount = remaining;
+      if (remaining === 0) {
+        liveState.players = [];
+      }
+      broadcastInfo();
+      return;
+    }
+
+    // Player spawn: Got character ZDOID (ignore death 0:0)
+    const playerJoin = line.match(/Got character ZDOID from\s+(.+?)\s*:\s*(?!0:0)([-0-9]+:[-0-9]+)/i);
+    if (playerJoin) {
+      const name = playerJoin[1].trim();
+      if (name && !name.startsWith('playfab/')) {
+        if (!liveState.players.includes(name)) {
+          liveState.players.push(name);
+        }
+        liveState.playerCount = Math.max(liveState.playerCount, liveState.players.length);
+        console.log(`[watcher] Player join/spawn: ${name}`);
+        broadcastInfo();
+      }
+      triggerSync('player_join');
+      return;
+    }
+
+    // Player disconnect / abandoned ZDO
     if (/Closing socket|Disposing socket|Destroying abandoned non persistent zdo/i.test(line)) {
-      console.log('[watcher] Player disconnect detected');
       triggerSync('player_leave');
       return;
     }
@@ -586,6 +688,57 @@ app.get('/api/activity/export', requireAdmin, (req, res) => {
     res.json(events);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/webhook/discord (DiscordConnector / Mod Ingestion) ────────────
+app.post('/api/webhook/discord', (req, res) => {
+  try {
+    const payload = req.body || {};
+    let message = payload.content || '';
+    let author = payload.username || 'Valheim';
+    let title = '';
+
+    if (Array.isArray(payload.embeds) && payload.embeds.length > 0) {
+      const embed = payload.embeds[0];
+      if (embed.title) title = embed.title;
+      if (embed.description) {
+        message = message ? `${message} - ${embed.description}` : embed.description;
+      }
+      if (embed.author && embed.author.name) {
+        author = embed.author.name;
+      }
+    }
+
+    // Clean discord formatting (**bold**, :emojis:, etc.)
+    const cleanMsg = (message || '')
+      .replace(/[*_~`]/g, '')
+      .replace(/:[a-zA-Z0-9_]+:/g, '')
+      .trim();
+
+    if (cleanMsg) {
+      activityTracker.ingestModMessage({
+        rawMessage: cleanMsg,
+        author,
+        title: title || 'DiscordConnector',
+        raw: JSON.stringify(payload).slice(0, 300)
+      });
+    }
+
+    // Optional forwarding to real Discord webhook if DISCORD_FORWARD_WEBHOOK is set in .env
+    const forwardUrl = process.env.DISCORD_FORWARD_WEBHOOK;
+    if (forwardUrl && forwardUrl.startsWith('http')) {
+      fetch(forwardUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    }
+
+    // Discord webhooks respond with 204 No Content
+    res.status(204).end();
+  } catch (err) {
+    res.status(200).end();
   }
 });
 
