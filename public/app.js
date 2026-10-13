@@ -176,7 +176,15 @@ document.getElementById('logoutBtn').addEventListener('click', logout);
 function initDashboard() {
   showView('dashboard');
   applyRolePermissions();
+
+  // Reflect actual server host IP in address stat if accessing remotely
+  if (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    const addrEl = document.getElementById('infoAddress');
+    if (addrEl) addrEl.textContent = `${window.location.hostname}:2456`;
+  }
+
   fetchStatus();
+  fetchServerInfo();    // Immediate fetch of join code and player stats
   statusPollInterval = setInterval(fetchStatus, 10000);
   startEventStream();   // live push for player count + join code
   startLogStream();     // live log tail
@@ -291,28 +299,71 @@ async function fetchServerInfo() {
   }
 }
 
-function copyJoinCode() {
-  const code = document.getElementById('infoJoinCode').dataset.code;
-  if (!code) return;
-  copyToClipboard(code, document.getElementById('btnCopyJoin'));
+function copyJoinCode(btnEl) {
+  const joinEl = document.getElementById('infoJoinCode');
+  const code = (joinEl?.dataset?.code || joinEl?.textContent || '').trim();
+  const btn = btnEl || document.getElementById('btnCopyJoin');
+
+  if (!code || code === '—' || code.includes('Not found') || code.length < 3) {
+    showToast('✘ No Join Code available yet. Make sure server is running.', true);
+    return;
+  }
+  copyToClipboard(code, btn);
 }
 
-function copyAddress() {
-  copyToClipboard('172.105.121.226:2456', event.currentTarget);
+function copyAddress(btnEl) {
+  const addrEl = document.getElementById('infoAddress');
+  let addr = (addrEl?.textContent || '').trim();
+  if (!addr || addr === '—') {
+    addr = `${window.location.hostname || '172.105.121.226'}:2456`;
+  }
+  const btn = btnEl || document.getElementById('btnCopyAddress');
+  copyToClipboard(addr, btn);
 }
 
 function copyToClipboard(text, btn) {
-  navigator.clipboard.writeText(text).then(() => {
-    flashCopied(btn);
-  }).catch(() => {
-    // Fallback for non-secure HTTP contexts
-    const ta = document.createElement('textarea');
-    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta); ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    flashCopied(btn);
-  });
+  if (!text) return;
+
+  function doFallback() {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '-9999px';
+      ta.style.opacity = '0';
+      ta.setAttribute('readonly', '');
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, 99999);
+      const successful = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (successful) {
+        flashCopied(btn);
+        showToast(`✔ Copied: ${text}`);
+      } else {
+        window.prompt('Copy to clipboard: Ctrl+C, Enter', text);
+        flashCopied(btn);
+      }
+    } catch (_) {
+      window.prompt('Copy to clipboard: Ctrl+C, Enter', text);
+      flashCopied(btn);
+    }
+  }
+
+  // Modern clipboard API is ONLY available in secure contexts (HTTPS or localhost)
+  // On plain HTTP (e.g. http://<server-ip>:3000), navigator.clipboard is undefined
+  if (window.isSecureContext && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    navigator.clipboard.writeText(text).then(() => {
+      flashCopied(btn);
+      showToast(`✔ Copied: ${text}`);
+    }).catch(() => {
+      doFallback();
+    });
+  } else {
+    doFallback();
+  }
 }
 
 function flashCopied(btn) {
@@ -501,22 +552,17 @@ function applyRolePermissions() {
     switchTab('dashboard');
   }
 
-  // 3. Server Controls: Admin can manage, regular user gets view-only notice
+  // 3. Server Controls: Enabled for both Admin and User roles
   const notice = document.getElementById('userViewOnlyNotice');
   if (notice) {
-    notice.classList.toggle('hidden', isAdmin);
+    notice.classList.add('hidden');
   }
 
   const ctrlBtns = document.querySelectorAll('.ctrl-btn');
   ctrlBtns.forEach((btn) => {
-    btn.disabled = !isAdmin;
-    if (!isAdmin) {
-      btn.title = 'Admin privileges required to manage server state';
-      btn.classList.add('disabled-user');
-    } else {
-      btn.title = '';
-      btn.classList.remove('disabled-user');
-    }
+    btn.disabled = false;
+    btn.title = '';
+    btn.classList.remove('disabled-user');
   });
 }
 

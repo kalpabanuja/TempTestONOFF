@@ -71,7 +71,7 @@
         </button>
 
         <div class="login-role-hint">
-          <span>⚔ Roles: <strong>admin</strong> (Full Realm Control) &bull; <strong>user</strong> (Dashboard View)</span>
+          <span>⚔ Roles: <strong>admin</strong> (Full Access + User Activity) &bull; <strong>user</strong> (Dashboard & Server Power)</span>
         </div>
       </form>
     </div>
@@ -182,7 +182,7 @@
                 <span class="info-stat-label">JOIN CODE</span>
                 <span class="info-stat-value mono" id="infoJoinCode">—</span>
               </div>
-              <button class="btn-copy" id="btnCopyJoin" title="Copy join code" onclick="copyJoinCode()">
+              <button class="btn-copy" id="btnCopyJoin" title="Copy join code" onclick="copyJoinCode(this)">
                 ⧉
               </button>
             </div>
@@ -195,7 +195,7 @@
                 <span class="info-stat-label">SERVER ADDRESS</span>
                 <span class="info-stat-value mono" id="infoAddress">172.105.121.226:2456</span>
               </div>
-              <button class="btn-copy" title="Copy address" onclick="copyAddress()">
+              <button class="btn-copy" id="btnCopyAddress" title="Copy address" onclick="copyAddress(this)">
                 ⧉
               </button>
             </div>

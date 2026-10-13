@@ -413,7 +413,7 @@ app.get('/api/status', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/server/start ───────────────────────────────────────────────────
-app.post('/api/server/start', requireAdmin, async (req, res) => {
+app.post('/api/server/start', requireAuth, async (req, res) => {
   try {
     await dockerCmd(`start ${VALHEIM_CONTAINER}`);
     res.json({ success: true, message: 'Server starting...' });
@@ -423,7 +423,7 @@ app.post('/api/server/start', requireAdmin, async (req, res) => {
 });
 
 // ─── POST /api/server/stop ────────────────────────────────────────────────────
-app.post('/api/server/stop', requireAdmin, async (req, res) => {
+app.post('/api/server/stop', requireAuth, async (req, res) => {
   try {
     await dockerCmd(`stop ${VALHEIM_CONTAINER}`);
     res.json({ success: true, message: 'Server stopped.' });
@@ -433,7 +433,7 @@ app.post('/api/server/stop', requireAdmin, async (req, res) => {
 });
 
 // ─── POST /api/server/restart ─────────────────────────────────────────────────
-app.post('/api/server/restart', requireAdmin, async (req, res) => {
+app.post('/api/server/restart', requireAuth, async (req, res) => {
   try {
     await dockerCmd(`restart ${VALHEIM_CONTAINER}`);
     res.json({ success: true, message: 'Server restarting...' });
