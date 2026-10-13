@@ -35,8 +35,12 @@
   --shadow-card:  0 8px 40px rgba(0, 0, 0, 0.6);
 }
 
-/* ── Reset ────────────────────────────────────────────────────── */
+/* ── Reset & Utilities ────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.hidden {
+  display: none !important;
+}
 
 html, body {
   height: 100%;
@@ -1437,6 +1441,10 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+}
+
+.export-dropdown-menu.hidden {
+  display: none !important;
 }
 
 .export-dropdown-menu a {
