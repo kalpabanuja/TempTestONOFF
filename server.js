@@ -712,6 +712,23 @@ app.get('/api/leaderboard/player/:name', (req, res) => {
   }
 });
 
+// ─── POST /api/leaderboard/reset (Admin: Recalculate or Reset Leaderboard) ─────
+app.post('/api/leaderboard/reset', requireAuth, (req, res) => {
+  try {
+    const { wipeAll = false } = req.body || {};
+    activityTracker.recalculateAllStats({ resetHistory: !!wipeAll });
+    res.json({
+      success: true,
+      message: wipeAll
+        ? 'Leaderboard stats and event history have been completely reset to zero.'
+        : 'Leaderboard stats have been cleanly recalculated from verified server events.',
+      leaderboard: activityTracker.getLeaderboard(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── POST /api/webhook/discord (DiscordConnector / Mod Ingestion) ────────────
 app.post('/api/webhook/discord', (req, res) => {
   try {

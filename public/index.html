@@ -306,6 +306,14 @@
                   <option value="harvests">Resources Mined</option>
                 </select>
               </div>
+              <div class="leader-actions-group" id="leaderAdminActions" style="display:none; gap:8px;">
+                <button class="btn btn-outline" id="btnRecalcLeaderboard" onclick="triggerLeaderboardRecalc()" title="Recalculate stats from verified events" style="padding:6px 12px; font-size:0.8rem;">
+                  🔄 Recalculate
+                </button>
+                <button class="btn btn-danger" id="btnResetLeaderboard" onclick="triggerLeaderboardReset()" title="Reset all stats to zero" style="padding:6px 12px; font-size:0.8rem;">
+                  🗑️ Reset Stats
+                </button>
+              </div>
             </div>
           </div>
 

@@ -1108,6 +1108,11 @@ async function loadLeaderboard() {
   const listEl = document.getElementById('leaderboardList');
   if (!podiumEl || !listEl) return;
 
+  const adminActions = document.getElementById('leaderAdminActions');
+  if (adminActions) {
+    adminActions.style.display = authToken ? 'flex' : 'none';
+  }
+
   try {
     const res = await apiFetch('/api/leaderboard');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1123,6 +1128,48 @@ async function loadLeaderboard() {
         <span class="empty-sub">Unable to connect to realm registry: ${err.message || 'Server error'}.</span>
       </div>
     `;
+  }
+}
+
+async function triggerLeaderboardRecalc() {
+  if (!confirm('Recalculate leaderboard stats from verified events?\n\nThis will strip false deaths from routine player logouts and accurately recalculate actual logins from scratch.')) {
+    return;
+  }
+  try {
+    const res = await apiFetch('/api/leaderboard/reset', {
+      method: 'POST',
+      body: JSON.stringify({ wipeAll: false }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(data.message || 'Leaderboard stats recalculated!', 'success');
+      loadLeaderboard();
+    } else {
+      showToast(data.error || 'Failed to recalculate', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function triggerLeaderboardReset() {
+  if (!confirm('⚠️ ARE YOU SURE?\n\nThis will completely wipe all leaderboard metrics (uptime, kills, deaths, builds, etc.) back to 0 for a brand new season.')) {
+    return;
+  }
+  try {
+    const res = await apiFetch('/api/leaderboard/reset', {
+      method: 'POST',
+      body: JSON.stringify({ wipeAll: true }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(data.message || 'Leaderboard reset to zero!', 'success');
+      loadLeaderboard();
+    } else {
+      showToast(data.error || 'Failed to reset', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
   }
 }
 
