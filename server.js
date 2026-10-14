@@ -325,7 +325,7 @@ function startLogWatcher() {
           liveState.players.push(name);
         }
         liveState.playerCount = Math.max(liveState.playerCount, liveState.players.length);
-        console.log(`[watcher] Player join/spawn: ${name}`);
+        console.log(`[watcher] Player join/spawn: ${name} (total: ${liveState.players.length})`);
         broadcastInfo();
       }
       triggerSync('player_join');
@@ -770,9 +770,12 @@ app.listen(PORT, '0.0.0.0', () => {
   setInterval(async () => {
     try {
       const info = await getAccurateServerInfo();
+      const prevPlayers = JSON.stringify(liveState.players.slice().sort());
+      const newPlayers  = JSON.stringify((info.players || []).slice().sort());
       const changed =
         info.playerCount !== liveState.playerCount ||
-        (info.joinCode && info.joinCode !== liveState.joinCode);
+        (info.joinCode && info.joinCode !== liveState.joinCode) ||
+        prevPlayers !== newPlayers;
       if (changed) {
         liveState.playerCount = info.playerCount;
         if (info.joinCode) liveState.joinCode = info.joinCode;

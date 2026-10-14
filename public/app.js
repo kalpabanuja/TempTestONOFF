@@ -424,10 +424,7 @@ function startLogStream() {
       <span>Connecting to log stream...</span>
     </div>`;
 
-  const es = new EventSource(`/api/logs?t=${authToken}`, {});
-
   // SSE doesn't support custom headers, so we pass token as query param
-  // The actual SSE endpoint re-reads the token from the URL
   logEventSource = new EventSource(`/api/logs?token=${encodeURIComponent(authToken)}`);
 
   logLineCount = 0;
@@ -476,9 +473,15 @@ function stopLogStream() {
 
 function classifyLog(line) {
   const l = line.toLowerCase();
-  if (l.includes('error') || l.includes('exception') || l.includes('fatal')) return 'error';
-  if (l.includes('warn'))  return 'warn';
-  if (l.includes('info') || l.includes('starting') || l.includes('loaded')) return 'info';
+  if (l.includes('error') || l.includes('exception') || l.includes('fatal') || l.includes('failed')) return 'error';
+  if (l.includes('warn') || l.includes('destroyed') || l.includes('abandoned')) return 'warn';
+  if (
+    l.includes('info') || l.includes('starting') || l.includes('loaded') ||
+    l.includes('got character') || l.includes('player joined') || l.includes('player connection') ||
+    l.includes('dungeon') || l.includes('world saved') || l.includes('connections') ||
+    l.includes('[bepinex]') || l.includes('[discordconnector]') || l.includes('[info   :') ||
+    l.includes('valheim version') || l.includes('game server')
+  ) return 'info';
   return '';
 }
 
