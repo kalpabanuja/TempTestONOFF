@@ -432,21 +432,24 @@ class ActivityTracker {
     }
 
     // 4. In-Game Modded / Combat Death ("Player <Name> died" / "slain by")
-    const slainMatch = line.match(/(?:Player\s+)?([A-Za-z0-9_]+)\s+(?:was killed by|died to|was slain by|fell victim to)\s+(.+)/i);
+    // NOTE: Use .+? (lazy) for player name to allow spaces; anchor with specific verb phrases
+    const slainMatch = line.match(/(?:Player\s+)?(.+?)\s+(?:was killed by|died to|was slain by|fell victim to)\s+(.+)/i);
     if (slainMatch) {
       const name = slainMatch[1].trim();
       const killer = slainMatch[2].trim();
-      this.registerPlayer(name, { online: true, timestamp });
-
-      return this.recordEvent({
-        player: name,
-        type: 'death',
-        severity: 'warn',
-        title: 'Killed by Creature / Trap',
-        details: `Slain by ${killer}.`,
-        raw: line,
-        timestamp,
-      });
+      // Guard against false positives on Valheim internal lines
+      if (name.length >= 2 && !name.startsWith('playfab/') && !name.startsWith('steam/')) {
+        this.registerPlayer(name, { online: true, timestamp });
+        return this.recordEvent({
+          player: name,
+          type: 'death',
+          severity: 'warn',
+          title: 'Killed by Creature / Trap',
+          details: `Slain by ${killer}.`,
+          raw: line,
+          timestamp,
+        });
+      }
     }
 
     // 5. Disconnect via abandoned non-persistent ZDO (maps owner PeerID directly to character)
@@ -529,39 +532,69 @@ class ActivityTracker {
     }
 
     // 8. Modded/Server In-Game Action: Mining / Harvesting Resources
-    const mineMatch = line.match(/(?:Player\s+)?([A-Za-z0-9_]+)\s+(?:mined|harvested|chopped|collected|gathered)\s+(.+)/i);
+    // Allow spaces in player names (.+?) and require specific verb forms
+    const mineMatch = line.match(/(?:Player\s+)?(.+?)\s+(?:mined|harvested|chopped|collected|gathered)\s+(.+)/i);
     if (mineMatch) {
       const name = mineMatch[1].trim();
       const resource = mineMatch[2].trim();
-      this.registerPlayer(name, { online: true, timestamp });
-
-      return this.recordEvent({
-        player: name,
-        type: 'action',
-        severity: 'info',
-        title: 'Resource Harvested',
-        details: `Harvested/Mined ${resource}.`,
-        raw: line,
-        timestamp,
-      });
+      if (name.length >= 2 && !name.startsWith('playfab/') && !name.startsWith('steam/')) {
+        this.registerPlayer(name, { online: true, timestamp });
+        return this.recordEvent({
+          player: name,
+          type: 'action',
+          severity: 'info',
+          title: 'Resource Harvested',
+          details: `Harvested/Mined ${resource}.`,
+          raw: line,
+          timestamp,
+        });
+      }
     }
 
-    // 9. Modded/Server In-Game Action: Monster Kills
-    const killMatch = line.match(/(?:Player\s+)?([A-Za-z0-9_]+)\s+(?:killed|slayed|slew|defeated|destroyed)\s+(.+)/i);
-    if (killMatch) {
-      const name = killMatch[1].trim();
-      const target = killMatch[2].trim();
-      this.registerPlayer(name, { online: true, timestamp });
+    // 9. Modded/Server In-Game Action: Build / Place events
+    // (e.g. from mods that log "PlayerName placed Workbench" or "PlayerName built Campfire")
+    const buildMatch = line.match(/(?:Player\s+)?(.+?)\s+(?:placed|built|constructed|crafted|built a|placed a|created)\s+(.+)/i);
+    if (buildMatch) {
+      const name = buildMatch[1].trim();
+      const item = buildMatch[2].trim();
+      if (name.length >= 2 && !name.startsWith('playfab/') && !name.startsWith('steam/')) {
+        this.registerPlayer(name, { online: true, timestamp });
+        return this.recordEvent({
+          player: name,
+          type: 'action',
+          severity: 'info',
+          title: 'Structure Placed',
+          details: `Placed/Built: ${item}.`,
+          raw: line,
+          timestamp,
+        });
+      }
+    }
 
-      return this.recordEvent({
-        player: name,
-        type: 'action',
-        severity: 'info',
-        title: 'Creature Slayed',
-        details: `Defeated ${target} in combat.`,
-        raw: line,
-        timestamp,
-      });
+    // 10. Modded/Server In-Game Action: Monster / Boss Kills
+    // IMPORTANT: Only match lines from actual mods (not vanilla server lines like "Player connection lost").
+    // Require the line to NOT start with known vanilla prefixes before attempting the kill match.
+    if (
+      !line.match(/^\d{4}-\d{2}-\d{2}T/) && // Not a docker-timestamp-only line
+      !line.match(/Player connection|Closing socket|Disposing socket|ZNet|ZDO|ZDOS|DungeonDB|Valheim version|ZNetScene|Game server/i)
+    ) {
+      const killMatch = line.match(/(?:Player\s+)?(.+?)\s+(?:killed|slayed|slew|defeated|destroyed)\s+(?:a |an |the )?(.+)/i);
+      if (killMatch) {
+        const name = killMatch[1].trim();
+        const target = killMatch[2].trim();
+        if (name.length >= 2 && !name.startsWith('playfab/') && !name.startsWith('steam/') && name !== 'Player') {
+          this.registerPlayer(name, { online: true, timestamp });
+          return this.recordEvent({
+            player: name,
+            type: 'action',
+            severity: 'info',
+            title: 'Creature Slayed',
+            details: `Defeated ${target} in combat.`,
+            raw: line,
+            timestamp,
+          });
+        }
+      }
     }
 
     // 10. World Chat / Shout: "<Player> message" or "Player shouts: message"
@@ -645,7 +678,7 @@ class ActivityTracker {
     const text = rawMessage.trim();
 
     // 1. Player Joined (e.g. "Kalpa has arrived!" or "Kalpa joined the game")
-    const joinMatch = text.match(/^(.+?)\s+(?:has arrived|has joined|joined the (?:server|game)|connected)/i);
+    const joinMatch = text.match(/^(.+?)\s+(?:has arrived|has joined|joined the (?:server|game)|connected to the server)/i);
     if (joinMatch) {
       const player = joinMatch[1].trim();
       this.currentlyOnline.add(player);
@@ -662,7 +695,7 @@ class ActivityTracker {
     }
 
     // 2. Player Left (e.g. "Kalpa has left." or "Kalpa left the game" or "Kalpa disconnected")
-    const leaveMatch = text.match(/^(.+?)\s+(?:has left|left the (?:server|game)|disconnected)/i);
+    const leaveMatch = text.match(/^(.+?)\s+(?:has left|left the (?:server|game)|disconnected from the server|disconnected\.?$)/i);
     if (leaveMatch) {
       const player = leaveMatch[1].trim();
       this.currentlyOnline.delete(player);
@@ -679,10 +712,11 @@ class ActivityTracker {
     }
 
     // 3. Player Death (e.g. "Kalpa died." or "Kalpa was killed by Troll")
-    const deathMatch = text.match(/^(.+?)\s+(?:died|was killed by|perished|succumbed|fell victim to)\s*(.*)/i);
+    // Must come BEFORE the creature-kill match to avoid "X was killed by Y" being parsed as X killing Y.
+    const deathMatch = text.match(/^(.+?)\s+(?:has died|died\.?$|was killed by|perished|succumbed|fell victim to)\s*(.*)/i);
     if (deathMatch) {
       const player = deathMatch[1].trim();
-      const cause = deathMatch[2]?.trim();
+      const cause = (deathMatch[2] || '').trim();
       this.registerPlayer(player, { online: true, timestamp });
       return this.recordEvent({
         player,
@@ -695,26 +729,7 @@ class ActivityTracker {
       });
     }
 
-    // 4. Shout / Chat (e.g. "Kalpa: hello everyone" or "Kalpa shouts: help me")
-    const chatMatch = text.match(/^(.+?)\s*(?:shouts|says|whispers)?:?\s*[:"]\s*(.+)/i);
-    if (chatMatch) {
-      const player = chatMatch[1].trim();
-      const chat = chatMatch[2].trim();
-      if (player.toLowerCase() !== 'server' && player.toLowerCase() !== 'valheim') {
-        this.registerPlayer(player, { online: true, timestamp });
-        return this.recordEvent({
-          player,
-          type: 'action',
-          severity: 'info',
-          title: 'World Shout / Chat',
-          details: `"${chat.replace(/^"|"$/g, '')}"`,
-          raw,
-          timestamp,
-        });
-      }
-    }
-
-    // 5. Map Ping (e.g. "Kalpa pinged the map")
+    // 4. Map Ping — before chat so "pinged the map" doesn't get swallowed by the colon-chat pattern
     const pingMatch = text.match(/^(.+?)\s+pinged the map/i);
     if (pingMatch) {
       const player = pingMatch[1].trim();
@@ -730,7 +745,99 @@ class ActivityTracker {
       });
     }
 
-    // 6. World Event / Raid (e.g. "The forest is moving..." or "A cold wind blows from the mountains")
+    // 5. Creature / Boss Kill (e.g. "Kalpa killed a Troll", "Kalpa slew Eikthyr", "Kalpa defeated Bonemass")
+    // Must come BEFORE the chat colon pattern so "Kalpa killed a Troll" isn't swallowed.
+    const creatureKillMatch = text.match(/^(.+?)\s+(?:killed|slayed|slew|defeated|destroyed|slain)\s+(?:a |an |the )?(.+)/i);
+    if (creatureKillMatch) {
+      const player = creatureKillMatch[1].trim();
+      const target = creatureKillMatch[2].replace(/[!.]+$/, '').trim();
+      // Guard: don't confuse "was killed by" death events (caught above) or server lines
+      if (
+        player.length >= 2 &&
+        !player.toLowerCase().includes('server') &&
+        !player.startsWith('playfab/') &&
+        !player.startsWith('steam/')
+      ) {
+        this.registerPlayer(player, { online: true, timestamp });
+        return this.recordEvent({
+          player,
+          type: 'action',
+          severity: 'info',
+          title: 'Creature Slayed',
+          details: `Defeated ${target} in combat.`,
+          raw,
+          timestamp,
+        });
+      }
+    }
+
+    // 6. Build / Place events (e.g. "Kalpa placed a Workbench", "Kalpa built a Campfire")
+    const buildMatch = text.match(/^(.+?)\s+(?:placed|built|constructed|crafted|created)\s+(?:a |an |the )?(.+)/i);
+    if (buildMatch) {
+      const player = buildMatch[1].trim();
+      const item = buildMatch[2].replace(/[!.]+$/, '').trim();
+      if (
+        player.length >= 2 &&
+        !player.toLowerCase().includes('server') &&
+        !player.startsWith('playfab/') &&
+        !player.startsWith('steam/')
+      ) {
+        this.registerPlayer(player, { online: true, timestamp });
+        return this.recordEvent({
+          player,
+          type: 'action',
+          severity: 'info',
+          title: 'Structure Placed',
+          details: `Built/placed: ${item}.`,
+          raw,
+          timestamp,
+        });
+      }
+    }
+
+    // 7. Loot / Pickup events (e.g. "Kalpa picked up Coins x5", "Kalpa collected Dragon Egg")
+    const pickupMatch = text.match(/^(.+?)\s+(?:picked up|looted|collected|gathered|obtained|received)\s+(.+)/i);
+    if (pickupMatch) {
+      const player = pickupMatch[1].trim();
+      const item = pickupMatch[2].replace(/[!.]+$/, '').trim();
+      if (
+        player.length >= 2 &&
+        !player.toLowerCase().includes('server') &&
+        !player.startsWith('playfab/')
+      ) {
+        this.registerPlayer(player, { online: true, timestamp });
+        return this.recordEvent({
+          player,
+          type: 'action',
+          severity: 'info',
+          title: 'Item Acquired',
+          details: `Picked up: ${item}.`,
+          raw,
+          timestamp,
+        });
+      }
+    }
+
+    // 8. Resource harvesting (e.g. "Kalpa mined Stone", "Kalpa chopped Oak")
+    const harvestMatch = text.match(/^(.+?)\s+(?:mined|harvested|chopped|gathered|cut down)\s+(.+)/i);
+    if (harvestMatch) {
+      const player = harvestMatch[1].trim();
+      const resource = harvestMatch[2].replace(/[!.]+$/, '').trim();
+      if (player.length >= 2 && !player.startsWith('playfab/') && !player.startsWith('steam/')) {
+        this.registerPlayer(player, { online: true, timestamp });
+        return this.recordEvent({
+          player,
+          type: 'action',
+          severity: 'info',
+          title: 'Resource Harvested',
+          details: `Harvested: ${resource}.`,
+          raw,
+          timestamp,
+        });
+      }
+    }
+
+    // 9. World Event / Raid phrases
     if (/forest is moving|foul smell|cold wind|ground is shaking|army of|skeleton surprise|hunt/i.test(text)) {
       return this.recordEvent({
         player: 'World',
@@ -743,7 +850,32 @@ class ActivityTracker {
       });
     }
 
-    // 7. General mod action
+    // 10. Chat / Shout — comes LAST so specific action patterns above get priority
+    // Only matches lines with an explicit shout/say verb OR a colon-quoted message.
+    const chatMatch = text.match(/^(.+?)\s+(?:shouts|says|whispers):\s*(.+)/i) ||
+                      text.match(/^(.+?):\s+"(.+)"/i);
+    if (chatMatch) {
+      const player = chatMatch[1].trim();
+      const chat = chatMatch[2].trim();
+      if (
+        player.length >= 2 &&
+        player.toLowerCase() !== 'server' &&
+        player.toLowerCase() !== 'valheim'
+      ) {
+        this.registerPlayer(player, { online: true, timestamp });
+        return this.recordEvent({
+          player,
+          type: 'action',
+          severity: 'info',
+          title: 'World Shout / Chat',
+          details: `"${chat.replace(/^"|"$/g, '')}"`,
+          raw,
+          timestamp,
+        });
+      }
+    }
+
+    // 11. Generic fallthrough — catch everything else from the mod
     return this.recordEvent({
       player: author && author !== 'Valheim' ? author : 'Mod',
       type: 'action',
