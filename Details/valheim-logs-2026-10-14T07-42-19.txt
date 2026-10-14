@@ -1,0 +1,402 @@
+2026-10-14T07:29:24.255548974Z Oct 14 07:29:24 supervisord: valheim-server [Message:   BepInEx] Chainloader started
+2026-10-14T07:29:24.259689352Z Oct 14 07:29:24 supervisord: valheim-server [Info   :   BepInEx] 1 plugin to load
+2026-10-14T07:29:24.265715900Z Oct 14 07:29:24 supervisord: valheim-server [Info   :   BepInEx] Loading [DiscordConnector 3.1.3] (nwesterhausen.DiscordConnector)
+2026-10-14T07:29:24.271593286Z Oct 14 07:29:24 supervisord: valheim-server [Info   :DiscordConnector] Existing log files versioned.
+2026-10-14T07:29:24.271607466Z Oct 14 07:29:24 supervisord: valheim-server [Info   :DiscordConnector] Logger initialized.
+2026-10-14T07:29:24.579048337Z Oct 14 07:29:24 supervisord: valheim-server [Message:   BepInEx] Chainloader startup complete (1 loaded, 0 skipped, 0 failed)
+2026-10-14T07:29:24.969907054Z Oct 14 07:29:24 supervisord: valheim-server UnloadTime: 0.401961 ms
+2026-10-14T07:29:24.999204463Z Oct 14 07:29:24 supervisord: valheim-server 10/14/2026 07:29:24: Set background loading budget to Low
+2026-10-14T07:29:25.000327952Z Oct 14 07:29:24 supervisord: valheim-server 10/14/2026 07:29:25: Loading first scene!
+2026-10-14T07:29:25.004967438Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Preferences initialized! Activating first scene!
+2026-10-14T07:29:25.191944187Z Oct 14 07:29:25 supervisord: valheim-server Unloading 4 Unused Serialized files (Serialized files now loaded: 8)
+2026-10-14T07:29:25.191959527Z Oct 14 07:29:25 supervisord: valheim-server UnloadTime: 0.053780 ms
+2026-10-14T07:29:25.334959638Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loading: Starting to load scene: start.unity (169d7618616154c03be07e9ad3af5893)
+2026-10-14T07:29:25.336237669Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Set background loading budget to Normal
+2026-10-14T07:29:25.533876653Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #0 - 'localization' language: 'English'
+2026-10-14T07:29:25.533886373Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #1 - 'localization_extra' language: 'English'
+2026-10-14T07:29:25.533888913Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #2 - 'heightmap_message' language: 'English'
+2026-10-14T07:29:25.537770817Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #3 - 'localization_witch' language: 'English'
+2026-10-14T07:29:25.537826358Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #4 - 'localization_ashlands' language: 'English'
+2026-10-14T07:29:25.548300270Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #5 - 'localization_deepnorth' language: 'English'
+2026-10-14T07:29:25.548863188Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #6 - 'localization_captions' language: 'English'
+2026-10-14T07:29:25.550644837Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #7 - 'localization_warriortitles' language: 'English'
+2026-10-14T07:29:25.550657328Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #8 - 'localization_combatupdate' language: 'English'
+2026-10-14T07:29:25.551527791Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #9 - 'localization_ps' language: 'English'
+2026-10-14T07:29:25.553595645Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #10 - 'localization_celebrationupdate' language: 'English'
+2026-10-14T07:29:25.553989732Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #11 - 'localization_xbox' language: 'English'
+2026-10-14T07:29:25.554703594Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #12 - 'localization_switch' language: 'English'
+2026-10-14T07:29:25.570677696Z Oct 14 07:29:25 supervisord: valheim-server Unloading 26 unused Assets to reduce memory usage. Loaded Objects now: 3052.
+2026-10-14T07:29:25.570690645Z Oct 14 07:29:25 supervisord: valheim-server Total: 5.978977 ms (FindLiveObjects: 0.184120 ms CreateObjectMapping: 0.053009 ms MarkObjects: 5.695668 ms  DeleteObjects: 0.045920 ms)
+2026-10-14T07:29:27.931952436Z Oct 14 07:29:27 supervisord: valheim-server DEBUG - [264] - Waiting for server to listen on UDP query port 2457
+2026-10-14T07:29:27.945380477Z Oct 14 07:29:27 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:28.204555758Z Oct 14 07:29:28 supervisord: valheim-server The referenced script on this Behaviour (Game Object '') is missing!
+2026-10-14T07:29:28.317161430Z Oct 14 07:29:28 supervisord: valheim-server AsyncResourceUpload failed.
+2026-10-14T07:29:28.483727675Z Oct 14 07:29:28 supervisord: valheim-server AsyncResourceUpload failed.
+2026-10-14T07:29:28.726130453Z Oct 14 07:29:28 supervisord: valheim-server The referenced script on this Behaviour (Game Object '') is missing!
+2026-10-14T07:29:29.126749939Z Oct 14 07:29:29 supervisord: valheim-server The referenced script on this Behaviour (Game Object '') is missing!
+2026-10-14T07:29:29.621657568Z Oct 14 07:29:29 supervisord: valheim-server 10/14/2026 07:29:29: Set background loading budget to High
+2026-10-14T07:29:29.622053084Z Oct 14 07:29:29 supervisord: valheim-server 10/14/2026 07:29:29: GPU Device: 0000:0000 (Unknown)
+2026-10-14T07:29:29.841662058Z Oct 14 07:29:29 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:30.286329915Z Oct 14 07:29:30 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:30.819661733Z Oct 14 07:29:30 supervisord: valheim-server Unloading 2 Unused Serialized files (Serialized files now loaded: 19)
+2026-10-14T07:29:30.917550075Z Oct 14 07:29:30 supervisord: valheim-server 10/14/2026 07:29:30: Loading: Done, Total time: -5.582272
+2026-10-14T07:29:31.361023101Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Set background loading budget to Low
+2026-10-14T07:29:31.365619867Z Oct 14 07:29:31 supervisord: valheim-server UnloadTime: 7.834671 ms
+2026-10-14T07:29:31.371544805Z Oct 14 07:29:31 supervisord: valheim-server HDR Render Texture not supported, disabling HDR on reflection probe.
+2026-10-14T07:29:31.372252056Z Oct 14 07:29:31 supervisord: valheim-server This custom render path shader needs to have at least 1 passes.
+2026-10-14T07:29:31.372271036Z Oct 14 07:29:31 supervisord: valheim-server Could not find material Hidden/VideoDecode. Make sure the Video shaders are included in your build, in the Built-in Shader Settings section of the Graphics Settings.
+2026-10-14T07:29:31.372273436Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass YCbCr_To_RGB1 in shader <not found>
+2026-10-14T07:29:31.372275646Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass YCbCrA_To_RGBAFull in shader <not found>
+2026-10-14T07:29:31.372375847Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass YCbCrA_To_RGBA in shader <not found>
+2026-10-14T07:29:31.372395127Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass Flip_RGBA_To_RGBA in shader <not found>
+2026-10-14T07:29:31.372397807Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass Flip_RGBASplit_To_RGBA in shader <not found>
+2026-10-14T07:29:31.372399847Z Oct 14 07:29:31 supervisord: valheim-server This custom render path shader needs to have at least 1 passes.
+2026-10-14T07:29:31.372401787Z Oct 14 07:29:31 supervisord: valheim-server Could not find material Hidden/VideoComposite. Make sure the Video shaders are included in your build, in the Built-in Shader Settings section of the Graphics Settings.
+2026-10-14T07:29:31.372403718Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass Default in shader <not found>
+2026-10-14T07:29:31.384015297Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Missing audio clip in music respawn
+2026-10-14T07:29:31.385163017Z Oct 14 07:29:31 supervisord: valheim-server OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+2026-10-14T07:29:31.388075365Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Get create world LokuPappa
+2026-10-14T07:29:31.424515131Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: SaveSystem.Reload for World is done [30ms]
+2026-10-14T07:29:31.449274196Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Using environment steamid 892970
+2026-10-14T07:29:31.450016028Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Using steam APPID:892970
+2026-10-14T07:29:31.667460496Z Oct 14 07:29:31 supervisord: valheim-server flock /sys/devices/virtual/dmi/id/sys_vendor LOCK_SH failed. errno = 13flock /sys/devices/virtual/dmi/id/product_name LOCK_SH failed. errno = 13[S_API] SteamAPI_Init(): Loaded local 'steamclient.so' OK.
+2026-10-14T07:29:31.684750710Z Oct 14 07:29:31 supervisord: valheim-server Setting breakpad minidump AppID = 892970
+2026-10-14T07:29:31.684775850Z Oct 14 07:29:31 supervisord: valheim-server SteamInternal_SetMinidumpSteamID:  Caching Steam ID:  76561197960265728 [API loaded no]
+2026-10-14T07:29:31.688667094Z Oct 14 07:29:31 supervisord: valheim-server [S_API FAIL] Tried to access Steam interface SteamNetworkingUtils004 before SteamAPI_Init succeeded.
+2026-10-14T07:29:31.693467552Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Server ID 90071992547409920
+2026-10-14T07:29:31.702216996Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Authentication:k_ESteamNetworkingAvailability_Waiting
+2026-10-14T07:29:31.702232536Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Steam game server initialized
+2026-10-14T07:29:31.705938497Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Valheim version: l-1.0.17 (network version 40)
+2026-10-14T07:29:31.711131891Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Worldgenerator version setup:2
+2026-10-14T07:29:31.735261346Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Console: Valheim l-1.0.17 (network version 40)
+2026-10-14T07:29:31.735293987Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Console: 
+2026-10-14T07:29:31.735296777Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Console: type "help" - for commands
+2026-10-14T07:29:31.735298857Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Console: 
+2026-10-14T07:29:31.736129550Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Render threading mode:SingleThreaded
+2026-10-14T07:29:31.774430837Z Oct 14 07:29:31 supervisord: valheim-server OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+2026-10-14T07:29:31.791255983Z Oct 14 07:29:31 supervisord: valheim-server [AmplifyOcclusion] System does not support CopyTexture. CacheAware will be disabled.
+2026-10-14T07:29:31.800617106Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Builder started
+2026-10-14T07:29:32.054005233Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: SaveSystem.Reload for Character is done [0ms]
+2026-10-14T07:29:32.062704175Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Failed to play intro cinematic
+2026-10-14T07:29:32.063704131Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Sending PlayFab login request (attempt 1)
+2026-10-14T07:29:32.064224960Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Login postponed until ID has been set.
+2026-10-14T07:29:32.068137644Z Oct 14 07:29:32 supervisord: valheim-server The shader Hidden/Dof/DepthOfFieldHdr (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) is not supported on this platform!
+2026-10-14T07:29:32.068275856Z Oct 14 07:29:32 supervisord: valheim-server The image effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) has been disabled as it's not supported on the current platform.
+2026-10-14T07:29:32.069408334Z Oct 14 07:29:32 supervisord: valheim-server The shader Hidden/SunShaftsComposite (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+2026-10-14T07:29:32.069418345Z Oct 14 07:29:32 supervisord: valheim-server The shader Hidden/SimpleClear (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+2026-10-14T07:29:32.069420594Z Oct 14 07:29:32 supervisord: valheim-server The image effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) has been disabled as it's not supported on the current platform.
+2026-10-14T07:29:32.092988610Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Found IPv6 address! Using 172.105.121.226.
+2026-10-14T07:29:32.093013360Z Oct 14 07:29:32 supervisord: valheim-server Found ipv address to be 172.105.121.226
+2026-10-14T07:29:32.100928860Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Starting music menu
+2026-10-14T07:29:32.357605210Z Oct 14 07:29:32 supervisord: valheim-server Unloading 106004 unused Assets to reduce memory usage. Loaded Objects now: 276721.
+2026-10-14T07:29:32.357687322Z Oct 14 07:29:32 supervisord: valheim-server Total: 202.411395 ms (FindLiveObjects: 27.094215 ms CreateObjectMapping: 40.372142 ms MarkObjects: 91.332928 ms  DeleteObjects: 43.610657 ms)
+2026-10-14T07:29:32.409970247Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.425425250Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.451732811Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.453978738Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.453988308Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.454996455Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.463307640Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.563590581Z Oct 14 07:29:32 supervisord: valheim-server Unloading 3 Unused Serialized files (Serialized files now loaded: 22)
+2026-10-14T07:29:32.580296045Z Oct 14 07:29:32 supervisord: valheim-server UnloadTime: 16.181491 ms
+2026-10-14T07:29:32.584879610Z Oct 14 07:29:32 supervisord: valheim-server HDR Render Texture not supported, disabling HDR on reflection probe.
+2026-10-14T07:29:32.584932271Z Oct 14 07:29:32 supervisord: valheim-server HDR Render Texture not supported, disabling HDR on reflection probe.
+2026-10-14T07:29:32.585217315Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Audioman already exist, destroying self
+2026-10-14T07:29:32.585363668Z Oct 14 07:29:32 supervisord: valheim-server OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+2026-10-14T07:29:32.935047491Z 2026-10-14 07:29:32,934 INFO success: valheim-server entered RUNNING state, process has stayed up for > than 10 seconds (startsecs)
+2026-10-14T07:29:32.935256303Z Oct 14 07:29:32 supervisord: valheim-server DEBUG - [264] - Server is now listening on UDP query port 2457
+2026-10-14T07:29:32.935941545Z Oct 14 07:29:32 supervisord: valheim-updater valheim-server: started
+2026-10-14T07:29:32.965575630Z Oct 14 07:29:32 supervisord: valheim-server src/clientdll/cminterface.cpp (2257) : !BLoggedOn()
+2026-10-14T07:29:32.966808870Z Oct 14 07:29:32 supervisord: valheim-server src/clientdll/cminterface.cpp (2257) : !BLoggedOn()
+2026-10-14T07:29:32.966823480Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Console: Valheim l-1.0.17 (network version 40)
+2026-10-14T07:29:32.966826010Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Console: 
+2026-10-14T07:29:32.967022443Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Console: type "help" - for commands
+2026-10-14T07:29:32.967090824Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Console: 
+2026-10-14T07:29:32.978035874Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: isModded: True
+2026-10-14T07:29:32.987314315Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Zonesystem Awake 14977
+2026-10-14T07:29:32.987321715Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: DungeonDB Awake 14977
+2026-10-14T07:29:33.014575232Z Oct 14 07:29:33 supervisord: valheim-server 10/14/2026 07:29:33: Worldgenerator version setup:2
+2026-10-14T07:29:36.487245131Z Oct 14 07:29:36 supervisord: valheim-server OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+2026-10-14T07:29:36.532406800Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: /w [text] - Whisper
+2026-10-14T07:29:36.532425120Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: /s [text] - Shout
+2026-10-14T07:29:36.532431310Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: /die - Kill yourself
+2026-10-14T07:29:36.532435990Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: /resetspawn - Reset spawn point
+2026-10-14T07:29:36.532440471Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: /[emote]
+2026-10-14T07:29:36.532445251Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: Emotes: wave, sit, challenge, cheer, nonono, thumbsup, point, blowkiss, bow, cower, cry, despair, flex, comehere, headbang, kneel, laugh, roar, shrug, dance, relax, toast, rest, vibe, loveyou
+2026-10-14T07:29:36.532451321Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: 
+2026-10-14T07:29:36.544779322Z Oct 14 07:29:36 supervisord: valheim-server [AmplifyOcclusion] System does not support CopyTexture. CacheAware will be disabled.
+2026-10-14T07:29:36.773009898Z Oct 14 07:29:36 supervisord: valheim-server Unloading 302 unused Assets to reduce memory usage. Loaded Objects now: 277351.
+2026-10-14T07:29:36.773037147Z Oct 14 07:29:36 supervisord: valheim-server Total: 170.654572 ms (FindLiveObjects: 19.740895 ms CreateObjectMapping: 27.392286 ms MarkObjects: 122.732400 ms  DeleteObjects: 0.788211 ms)
+2026-10-14T07:29:36.773844151Z Oct 14 07:29:36 supervisord: valheim-server [Info   :DiscordConnector] Registered RPC: DiscordConnector_OnNewChatMessage
+2026-10-14T07:29:36.776750788Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Zonesystem Start 14977
+2026-10-14T07:29:36.781186111Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 3 locations, 0 vegetations, 0 environments, 0 biome env-setups, 0 clutter  from main
+2026-10-14T07:29:36.781510266Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 2 locations, 0 vegetations, 2 environments, 0 biome env-setups, 0 clutter  from main
+2026-10-14T07:29:36.782221688Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 27 locations, 25 vegetations, 5 environments, 1 biome env-setups, 3 clutter  from main
+2026-10-14T07:29:36.782229448Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 4 locations, 0 vegetations, 1 environments, 0 biome env-setups, 0 clutter  from main
+2026-10-14T07:29:36.782611234Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 25 locations, 33 vegetations, 8 environments, 2 biome env-setups, 2 clutter  from main
+2026-10-14T07:29:36.783392477Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 25 locations, 35 vegetations, 12 environments, 1 biome env-setups, 2 clutter  from main
+2026-10-14T07:29:36.786765943Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: DungeonDB Start 14977
+2026-10-14T07:29:36.790306520Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: ZRpc timeout set to 30s 
+2026-10-14T07:29:36.790319110Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Loading: ZNet Start
+2026-10-14T07:29:36.793448891Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: ZNet.LoadWorld: LokuPappa (LokuPappa), save number 84
+2026-10-14T07:29:36.798166908Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: ZoneSystem.Load => DB2: unpacking compressed data 148,153 => 212,557 bytes
+2026-10-14T07:29:36.823382121Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: ZoneSystem.Load => Loaded 12,212 locations
+2026-10-14T07:29:36.836631159Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: ZDOMan.LoadChunks - Starting to load 117,297 zdos from 11 Chunks. SessionID: 1629036314, WorldVersion: 41 [DeepNorth]
+2026-10-14T07:29:37.413711302Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Loading ZDOs done [580ms]
+2026-10-14T07:29:37.433128060Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Adding ZDOs to Dictionary done [18ms]
+2026-10-14T07:29:37.458425543Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Adding ZDOs to Sectors done [24ms]
+2026-10-14T07:29:37.460069961Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Connecting Portals done [1ms]
+2026-10-14T07:29:37.469636797Z Oct 14 07:29:37 supervisord: valheim-server ConnectSpawners => Connected 48 spawners and 112 'done' spawners. Removed connection from 0 orphan spawn:s.
+2026-10-14T07:29:37.469647667Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Connecting Spawners done [9ms]
+2026-10-14T07:29:37.470090474Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Connecting SyncTransforms done [0ms]
+2026-10-14T07:29:37.470372149Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks done [637ms]
+2026-10-14T07:29:37.474609399Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 0:  GiveMeScylla (Steam_76561199061832731, 3DA675ED31DC123D)
+2026-10-14T07:29:37.474626208Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 1:  RiviYa (Steam_76561199273932450, BC85A8FB8BDAD5BB)
+2026-10-14T07:29:37.474628539Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 2:  SaWwA (Steam_76561198671885983, F2BC897DC1889064)
+2026-10-14T07:29:37.474951174Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 3:  Bota_LK (Steam_76561199215262959, B1C5AE865146811B)
+2026-10-14T07:29:37.474962474Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 4:  Lakiya •_• (Steam_76561198785014660, BD291BEA59356303)
+2026-10-14T07:29:37.474966254Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 5:   (Steam_76561199227589670, 4A9D4143E596A018)
+2026-10-14T07:29:37.474968845Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 6:  Imnot_sadew (Steam_76561199729460576, D4F68FF527C338EC)
+2026-10-14T07:29:37.474971365Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 7:  lafeerthajudeen (Steam_76561198726398246, 9B54AFED7A4093EA)
+2026-10-14T07:29:37.475367840Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Checking for any blocked players in the historical player list...
+2026-10-14T07:29:37.476465439Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Unloading unused assets
+2026-10-14T07:29:37.476681242Z Oct 14 07:29:37 supervisord: valheim-server Unloading 1 Unused Serialized files (Serialized files now loaded: 22)
+2026-10-14T07:29:44.265455497Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: PlayFab custom ID set to "PlayFab_Pappa Gama_2456_761e7db3ae6f0af986dfd473c8eb999a"
+2026-10-14T07:29:44.265495189Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Sending PlayFab login request (attempt 2)
+2026-10-14T07:29:44.287661581Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Semaphore type: ManualResetEventSlim
+2026-10-14T07:29:44.293179231Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Opened PlayFab server
+2026-10-14T07:29:44.293213571Z Oct 14 07:29:44 supervisord: valheim-server The shader Hidden/Dof/DepthOfFieldHdr (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) is not supported on this platform!
+2026-10-14T07:29:44.293217832Z Oct 14 07:29:44 supervisord: valheim-server The image effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) has been disabled as it's not supported on the current platform.
+2026-10-14T07:29:44.293220612Z Oct 14 07:29:44 supervisord: valheim-server The shader Hidden/SunShaftsComposite (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+2026-10-14T07:29:44.293223232Z Oct 14 07:29:44 supervisord: valheim-server The shader Hidden/SimpleClear (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+2026-10-14T07:29:44.293239392Z Oct 14 07:29:44 supervisord: valheim-server The image effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) has been disabled as it's not supported on the current platform.
+2026-10-14T07:29:44.449867806Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Game server connected
+2026-10-14T07:29:44.679363741Z Oct 14 07:29:44 supervisord: valheim-server Unloading 2 unused Assets to reduce memory usage. Loaded Objects now: 280342.
+2026-10-14T07:29:44.679402292Z Oct 14 07:29:44 supervisord: valheim-server Total: 186.426383 ms (FindLiveObjects: 21.535528 ms CreateObjectMapping: 25.623203 ms MarkObjects: 138.109811 ms  DeleteObjects: 1.156812 ms)
+2026-10-14T07:29:44.710025813Z Oct 14 07:29:44 supervisord: valheim-server [AmplifyOcclusion] GBuffer Normals only available in Camera Deferred Shading mode. Switched to Camera source.
+2026-10-14T07:29:44.734584335Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Logged in PlayFab user via custom ID
+2026-10-14T07:29:44.735590542Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: PlayFab logged in as "PlayFab_Pappa Gama_2456_761e7db3ae6f0af986dfd473c8eb999a"
+2026-10-14T07:29:44.735599831Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: PlayFab local entity ID is 76F45D992E7898A2
+2026-10-14T07:29:44.736187421Z Oct 14 07:29:44 supervisord: valheim-server IPv4, returning 172.105.121.226:2456
+2026-10-14T07:29:44.736552766Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: New session server "Pappa Gama" that has join code , now 0 player(s)
+2026-10-14T07:29:44.736558647Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Register PlayFab server "Pappa Gama" with IP 172.105.121.226:2456
+2026-10-14T07:29:44.736966784Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Server 'Pappa Gama' begin PlayFab create and join network for server 
+2026-10-14T07:29:46.036155635Z Oct 14 07:29:46 supervisord: valheim-server 10/14/2026 07:29:46: Joined PlayFab Party network with ID "91c2d995-9110-4037-a80c-2545d79c4c55|AwAmUHuI1VAOHs1Azr9oFBeB0o/5TVNvdXRoZWFzdEFzaWEAAAAAAAAAJnlhtFmwm2+5xoip1gMQZO0ZPAJr9HsbOYa1hNGP3Va8FU1kbnM4MWU1LWQ3YTMzZTQzLTBhNDUtNDRlYS1iODkzLWJiOWFiZGI0YjI0Mi5zb3V0aGVhc3Rhc2lhLmNsb3VkYXBwLmF6dXJlLmNvbQ=="
+2026-10-14T07:29:46.040143941Z Oct 14 07:29:46 supervisord: valheim-server This is the serverIP used to register the server: 172.105.121.226:2456
+2026-10-14T07:29:46.267860746Z Oct 14 07:29:46 supervisord: valheim-server 10/14/2026 07:29:46: Created PlayFab lobby with ID "65cae7dc-751e-4585-85f0-42f98430e14c.r-20260323", ConnectionString "cv2:65cae7dc-751e-4585-85f0-42f98430e14c.r-20260323|451107|kv1:kbbf3WMZcf07JrJlBrnEZDpuxD0El8n8xJOhkQJl3Ek=" and owned by "76F45D992E7898A2"
+2026-10-14T07:29:46.267988939Z Oct 14 07:29:46 supervisord: valheim-server 10/14/2026 07:29:46: Session "Pappa Gama" registered with join code 598008
+2026-10-14T07:29:46.501797815Z Oct 14 07:29:46 supervisord: valheim-server 10/14/2026 07:29:46: Retry join-code check 99
+2026-10-14T07:29:47.934671434Z Oct 14 07:29:47 supervisord: valheim-server 10/14/2026 07:29:47: Session "Pappa Gama" with join code 598008 and IP 172.105.121.226:2456 is active with 0 player(s)
+2026-10-14T07:30:06.271427775Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: PlayFab listen socket child connected to remote player E7DE53F976FE66E2
+2026-10-14T07:30:06.271465406Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: Player joined server "Pappa Gama" that has join code 598008, now 1 player(s)
+2026-10-14T07:30:06.303140564Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: ZRpc timeout set to 90s 
+2026-10-14T07:30:06.308080075Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: Muted PlayFab remote player E7DE53F976FE66E2
+2026-10-14T07:30:06.308833627Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: PlayFab socket with remote ID playfab/E7DE53F976FE66E2 received local Platform ID Steam_76561199227589670
+2026-10-14T07:30:06.336987698Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: Got handshake from client playfab/E7DE53F976FE66E2
+2026-10-14T07:30:13.738659626Z Oct 14 07:30:13 supervisord: valheim-server 10/14/2026 07:30:13: Network version check, their:40, mine:40
+2026-10-14T07:30:13.752876849Z Oct 14 07:30:13 supervisord: valheim-server 10/14/2026 07:30:13: Checking for any blocked players in the historical player list...
+2026-10-14T07:30:13.753928396Z Oct 14 07:30:13 supervisord: valheim-server 10/14/2026 07:30:13: Server: New peer connected,sending global keys
+2026-10-14T07:30:36.640317322Z Oct 14 07:30:36 supervisord: valheim-server 10/14/2026 07:30:36: Checking for any blocked players in the historical player list...
+2026-10-14T07:30:40.874857521Z Oct 14 07:30:40 supervisord: valheim-server 10/14/2026 07:30:40: Got character ZDOID from Kalpa : 563490065:1
+2026-10-14T07:36:44.757550099Z Oct 14 07:36:44 supervisord: valheim-server 10/14/2026 07:36:44: Update PlayFab entity token
+2026-10-14T07:29:24.265715900Z Oct 14 07:29:24 supervisord: valheim-server [Info   :   BepInEx] Loading [DiscordConnector 3.1.3] (nwesterhausen.DiscordConnector)
+2026-10-14T07:29:24.271593286Z Oct 14 07:29:24 supervisord: valheim-server [Info   :DiscordConnector] Existing log files versioned.
+2026-10-14T07:29:24.271607466Z Oct 14 07:29:24 supervisord: valheim-server [Info   :DiscordConnector] Logger initialized.
+2026-10-14T07:29:24.579048337Z Oct 14 07:29:24 supervisord: valheim-server [Message:   BepInEx] Chainloader startup complete (1 loaded, 0 skipped, 0 failed)
+2026-10-14T07:29:24.969907054Z Oct 14 07:29:24 supervisord: valheim-server UnloadTime: 0.401961 ms
+2026-10-14T07:29:24.999204463Z Oct 14 07:29:24 supervisord: valheim-server 10/14/2026 07:29:24: Set background loading budget to Low
+2026-10-14T07:29:25.000327952Z Oct 14 07:29:24 supervisord: valheim-server 10/14/2026 07:29:25: Loading first scene!
+2026-10-14T07:29:25.004967438Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Preferences initialized! Activating first scene!
+2026-10-14T07:29:25.191944187Z Oct 14 07:29:25 supervisord: valheim-server Unloading 4 Unused Serialized files (Serialized files now loaded: 8)
+2026-10-14T07:29:25.191959527Z Oct 14 07:29:25 supervisord: valheim-server UnloadTime: 0.053780 ms
+2026-10-14T07:29:25.334959638Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loading: Starting to load scene: start.unity (169d7618616154c03be07e9ad3af5893)
+2026-10-14T07:29:25.336237669Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Set background loading budget to Normal
+2026-10-14T07:29:25.533876653Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #0 - 'localization' language: 'English'
+2026-10-14T07:29:25.533886373Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #1 - 'localization_extra' language: 'English'
+2026-10-14T07:29:25.533888913Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #2 - 'heightmap_message' language: 'English'
+2026-10-14T07:29:25.537770817Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #3 - 'localization_witch' language: 'English'
+2026-10-14T07:29:25.537826358Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #4 - 'localization_ashlands' language: 'English'
+2026-10-14T07:29:25.548300270Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #5 - 'localization_deepnorth' language: 'English'
+2026-10-14T07:29:25.548863188Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #6 - 'localization_captions' language: 'English'
+2026-10-14T07:29:25.550644837Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #7 - 'localization_warriortitles' language: 'English'
+2026-10-14T07:29:25.550657328Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #8 - 'localization_combatupdate' language: 'English'
+2026-10-14T07:29:25.551527791Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #9 - 'localization_ps' language: 'English'
+2026-10-14T07:29:25.553595645Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #10 - 'localization_celebrationupdate' language: 'English'
+2026-10-14T07:29:25.553989732Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #11 - 'localization_xbox' language: 'English'
+2026-10-14T07:29:25.554703594Z Oct 14 07:29:25 supervisord: valheim-server 10/14/2026 07:29:25: Loaded localization file #12 - 'localization_switch' language: 'English'
+2026-10-14T07:29:25.570677696Z Oct 14 07:29:25 supervisord: valheim-server Unloading 26 unused Assets to reduce memory usage. Loaded Objects now: 3052.
+2026-10-14T07:29:25.570690645Z Oct 14 07:29:25 supervisord: valheim-server Total: 5.978977 ms (FindLiveObjects: 0.184120 ms CreateObjectMapping: 0.053009 ms MarkObjects: 5.695668 ms  DeleteObjects: 0.045920 ms)
+2026-10-14T07:29:27.931952436Z Oct 14 07:29:27 supervisord: valheim-server DEBUG - [264] - Waiting for server to listen on UDP query port 2457
+2026-10-14T07:29:27.945380477Z Oct 14 07:29:27 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:28.204555758Z Oct 14 07:29:28 supervisord: valheim-server The referenced script on this Behaviour (Game Object '') is missing!
+2026-10-14T07:29:28.317161430Z Oct 14 07:29:28 supervisord: valheim-server AsyncResourceUpload failed.
+2026-10-14T07:29:28.483727675Z Oct 14 07:29:28 supervisord: valheim-server AsyncResourceUpload failed.
+2026-10-14T07:29:28.726130453Z Oct 14 07:29:28 supervisord: valheim-server The referenced script on this Behaviour (Game Object '') is missing!
+2026-10-14T07:29:29.126749939Z Oct 14 07:29:29 supervisord: valheim-server The referenced script on this Behaviour (Game Object '') is missing!
+2026-10-14T07:29:29.621657568Z Oct 14 07:29:29 supervisord: valheim-server 10/14/2026 07:29:29: Set background loading budget to High
+2026-10-14T07:29:29.622053084Z Oct 14 07:29:29 supervisord: valheim-server 10/14/2026 07:29:29: GPU Device: 0000:0000 (Unknown)
+2026-10-14T07:29:29.841662058Z Oct 14 07:29:29 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:30.286329915Z Oct 14 07:29:30 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:30.819661733Z Oct 14 07:29:30 supervisord: valheim-server Unloading 2 Unused Serialized files (Serialized files now loaded: 19)
+2026-10-14T07:29:30.917550075Z Oct 14 07:29:30 supervisord: valheim-server 10/14/2026 07:29:30: Loading: Done, Total time: -5.582272
+2026-10-14T07:29:31.361023101Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Set background loading budget to Low
+2026-10-14T07:29:31.365619867Z Oct 14 07:29:31 supervisord: valheim-server UnloadTime: 7.834671 ms
+2026-10-14T07:29:31.371544805Z Oct 14 07:29:31 supervisord: valheim-server HDR Render Texture not supported, disabling HDR on reflection probe.
+2026-10-14T07:29:31.372252056Z Oct 14 07:29:31 supervisord: valheim-server This custom render path shader needs to have at least 1 passes.
+2026-10-14T07:29:31.372271036Z Oct 14 07:29:31 supervisord: valheim-server Could not find material Hidden/VideoDecode. Make sure the Video shaders are included in your build, in the Built-in Shader Settings section of the Graphics Settings.
+2026-10-14T07:29:31.372273436Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass YCbCr_To_RGB1 in shader <not found>
+2026-10-14T07:29:31.372275646Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass YCbCrA_To_RGBAFull in shader <not found>
+2026-10-14T07:29:31.372375847Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass YCbCrA_To_RGBA in shader <not found>
+2026-10-14T07:29:31.372395127Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass Flip_RGBA_To_RGBA in shader <not found>
+2026-10-14T07:29:31.372397807Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass Flip_RGBASplit_To_RGBA in shader <not found>
+2026-10-14T07:29:31.372399847Z Oct 14 07:29:31 supervisord: valheim-server This custom render path shader needs to have at least 1 passes.
+2026-10-14T07:29:31.372401787Z Oct 14 07:29:31 supervisord: valheim-server Could not find material Hidden/VideoComposite. Make sure the Video shaders are included in your build, in the Built-in Shader Settings section of the Graphics Settings.
+2026-10-14T07:29:31.372403718Z Oct 14 07:29:31 supervisord: valheim-server Could not find video decode shader pass Default in shader <not found>
+2026-10-14T07:29:31.384015297Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Missing audio clip in music respawn
+2026-10-14T07:29:31.385163017Z Oct 14 07:29:31 supervisord: valheim-server OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+2026-10-14T07:29:31.388075365Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Get create world LokuPappa
+2026-10-14T07:29:31.424515131Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: SaveSystem.Reload for World is done [30ms]
+2026-10-14T07:29:31.449274196Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Using environment steamid 892970
+2026-10-14T07:29:31.450016028Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Using steam APPID:892970
+2026-10-14T07:29:31.667460496Z Oct 14 07:29:31 supervisord: valheim-server flock /sys/devices/virtual/dmi/id/sys_vendor LOCK_SH failed. errno = 13flock /sys/devices/virtual/dmi/id/product_name LOCK_SH failed. errno = 13[S_API] SteamAPI_Init(): Loaded local 'steamclient.so' OK.
+2026-10-14T07:29:31.684750710Z Oct 14 07:29:31 supervisord: valheim-server Setting breakpad minidump AppID = 892970
+2026-10-14T07:29:31.684775850Z Oct 14 07:29:31 supervisord: valheim-server SteamInternal_SetMinidumpSteamID:  Caching Steam ID:  76561197960265728 [API loaded no]
+2026-10-14T07:29:31.688667094Z Oct 14 07:29:31 supervisord: valheim-server [S_API FAIL] Tried to access Steam interface SteamNetworkingUtils004 before SteamAPI_Init succeeded.
+2026-10-14T07:29:31.693467552Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Server ID 90071992547409920
+2026-10-14T07:29:31.702216996Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Authentication:k_ESteamNetworkingAvailability_Waiting
+2026-10-14T07:29:31.702232536Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Steam game server initialized
+2026-10-14T07:29:31.705938497Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Valheim version: l-1.0.17 (network version 40)
+2026-10-14T07:29:31.711131891Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Worldgenerator version setup:2
+2026-10-14T07:29:31.735261346Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Console: Valheim l-1.0.17 (network version 40)
+2026-10-14T07:29:31.735293987Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Console: 
+2026-10-14T07:29:31.735296777Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Console: type "help" - for commands
+2026-10-14T07:29:31.735298857Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Console: 
+2026-10-14T07:29:31.736129550Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Render threading mode:SingleThreaded
+2026-10-14T07:29:31.774430837Z Oct 14 07:29:31 supervisord: valheim-server OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+2026-10-14T07:29:31.791255983Z Oct 14 07:29:31 supervisord: valheim-server [AmplifyOcclusion] System does not support CopyTexture. CacheAware will be disabled.
+2026-10-14T07:29:31.800617106Z Oct 14 07:29:31 supervisord: valheim-server 10/14/2026 07:29:31: Builder started
+2026-10-14T07:29:32.054005233Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: SaveSystem.Reload for Character is done [0ms]
+2026-10-14T07:29:32.062704175Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Failed to play intro cinematic
+2026-10-14T07:29:32.063704131Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Sending PlayFab login request (attempt 1)
+2026-10-14T07:29:32.064224960Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Login postponed until ID has been set.
+2026-10-14T07:29:32.068137644Z Oct 14 07:29:32 supervisord: valheim-server The shader Hidden/Dof/DepthOfFieldHdr (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) is not supported on this platform!
+2026-10-14T07:29:32.068275856Z Oct 14 07:29:32 supervisord: valheim-server The image effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) has been disabled as it's not supported on the current platform.
+2026-10-14T07:29:32.069408334Z Oct 14 07:29:32 supervisord: valheim-server The shader Hidden/SunShaftsComposite (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+2026-10-14T07:29:32.069418345Z Oct 14 07:29:32 supervisord: valheim-server The shader Hidden/SimpleClear (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+2026-10-14T07:29:32.069420594Z Oct 14 07:29:32 supervisord: valheim-server The image effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) has been disabled as it's not supported on the current platform.
+2026-10-14T07:29:32.092988610Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Found IPv6 address! Using 172.105.121.226.
+2026-10-14T07:29:32.093013360Z Oct 14 07:29:32 supervisord: valheim-server Found ipv address to be 172.105.121.226
+2026-10-14T07:29:32.100928860Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Starting music menu
+2026-10-14T07:29:32.357605210Z Oct 14 07:29:32 supervisord: valheim-server Unloading 106004 unused Assets to reduce memory usage. Loaded Objects now: 276721.
+2026-10-14T07:29:32.357687322Z Oct 14 07:29:32 supervisord: valheim-server Total: 202.411395 ms (FindLiveObjects: 27.094215 ms CreateObjectMapping: 40.372142 ms MarkObjects: 91.332928 ms  DeleteObjects: 43.610657 ms)
+2026-10-14T07:29:32.409970247Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.425425250Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.451732811Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.453978738Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.453988308Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.454996455Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.463307640Z Oct 14 07:29:32 supervisord: valheim-server The referenced script on this Behaviour (Game Object '<null>') is missing!
+2026-10-14T07:29:32.563590581Z Oct 14 07:29:32 supervisord: valheim-server Unloading 3 Unused Serialized files (Serialized files now loaded: 22)
+2026-10-14T07:29:32.580296045Z Oct 14 07:29:32 supervisord: valheim-server UnloadTime: 16.181491 ms
+2026-10-14T07:29:32.584879610Z Oct 14 07:29:32 supervisord: valheim-server HDR Render Texture not supported, disabling HDR on reflection probe.
+2026-10-14T07:29:32.584932271Z Oct 14 07:29:32 supervisord: valheim-server HDR Render Texture not supported, disabling HDR on reflection probe.
+2026-10-14T07:29:32.585217315Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Audioman already exist, destroying self
+2026-10-14T07:29:32.585363668Z Oct 14 07:29:32 supervisord: valheim-server OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+2026-10-14T07:29:32.935047491Z 2026-10-14 07:29:32,934 INFO success: valheim-server entered RUNNING state, process has stayed up for > than 10 seconds (startsecs)
+2026-10-14T07:29:32.935256303Z Oct 14 07:29:32 supervisord: valheim-server DEBUG - [264] - Server is now listening on UDP query port 2457
+2026-10-14T07:29:32.935941545Z Oct 14 07:29:32 supervisord: valheim-updater valheim-server: started
+2026-10-14T07:29:32.965575630Z Oct 14 07:29:32 supervisord: valheim-server src/clientdll/cminterface.cpp (2257) : !BLoggedOn()
+2026-10-14T07:29:32.966808870Z Oct 14 07:29:32 supervisord: valheim-server src/clientdll/cminterface.cpp (2257) : !BLoggedOn()
+2026-10-14T07:29:32.966823480Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Console: Valheim l-1.0.17 (network version 40)
+2026-10-14T07:29:32.966826010Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Console: 
+2026-10-14T07:29:32.967022443Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Console: type "help" - for commands
+2026-10-14T07:29:32.967090824Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Console: 
+2026-10-14T07:29:32.978035874Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: isModded: True
+2026-10-14T07:29:32.987314315Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: Zonesystem Awake 14977
+2026-10-14T07:29:32.987321715Z Oct 14 07:29:32 supervisord: valheim-server 10/14/2026 07:29:32: DungeonDB Awake 14977
+2026-10-14T07:29:33.014575232Z Oct 14 07:29:33 supervisord: valheim-server 10/14/2026 07:29:33: Worldgenerator version setup:2
+2026-10-14T07:29:36.487245131Z Oct 14 07:29:36 supervisord: valheim-server OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+2026-10-14T07:29:36.532406800Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: /w [text] - Whisper
+2026-10-14T07:29:36.532425120Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: /s [text] - Shout
+2026-10-14T07:29:36.532431310Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: /die - Kill yourself
+2026-10-14T07:29:36.532435990Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: /resetspawn - Reset spawn point
+2026-10-14T07:29:36.532440471Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: /[emote]
+2026-10-14T07:29:36.532445251Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: Emotes: wave, sit, challenge, cheer, nonono, thumbsup, point, blowkiss, bow, cower, cry, despair, flex, comehere, headbang, kneel, laugh, roar, shrug, dance, relax, toast, rest, vibe, loveyou
+2026-10-14T07:29:36.532451321Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Console: 
+2026-10-14T07:29:36.544779322Z Oct 14 07:29:36 supervisord: valheim-server [AmplifyOcclusion] System does not support CopyTexture. CacheAware will be disabled.
+2026-10-14T07:29:36.773009898Z Oct 14 07:29:36 supervisord: valheim-server Unloading 302 unused Assets to reduce memory usage. Loaded Objects now: 277351.
+2026-10-14T07:29:36.773037147Z Oct 14 07:29:36 supervisord: valheim-server Total: 170.654572 ms (FindLiveObjects: 19.740895 ms CreateObjectMapping: 27.392286 ms MarkObjects: 122.732400 ms  DeleteObjects: 0.788211 ms)
+2026-10-14T07:29:36.773844151Z Oct 14 07:29:36 supervisord: valheim-server [Info   :DiscordConnector] Registered RPC: DiscordConnector_OnNewChatMessage
+2026-10-14T07:29:36.776750788Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Zonesystem Start 14977
+2026-10-14T07:29:36.781186111Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 3 locations, 0 vegetations, 0 environments, 0 biome env-setups, 0 clutter  from main
+2026-10-14T07:29:36.781510266Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 2 locations, 0 vegetations, 2 environments, 0 biome env-setups, 0 clutter  from main
+2026-10-14T07:29:36.782221688Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 27 locations, 25 vegetations, 5 environments, 1 biome env-setups, 3 clutter  from main
+2026-10-14T07:29:36.782229448Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 4 locations, 0 vegetations, 1 environments, 0 biome env-setups, 0 clutter  from main
+2026-10-14T07:29:36.782611234Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 25 locations, 33 vegetations, 8 environments, 2 biome env-setups, 2 clutter  from main
+2026-10-14T07:29:36.783392477Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Added 25 locations, 35 vegetations, 12 environments, 1 biome env-setups, 2 clutter  from main
+2026-10-14T07:29:36.786765943Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: DungeonDB Start 14977
+2026-10-14T07:29:36.790306520Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: ZRpc timeout set to 30s 
+2026-10-14T07:29:36.790319110Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: Loading: ZNet Start
+2026-10-14T07:29:36.793448891Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: ZNet.LoadWorld: LokuPappa (LokuPappa), save number 84
+2026-10-14T07:29:36.798166908Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: ZoneSystem.Load => DB2: unpacking compressed data 148,153 => 212,557 bytes
+2026-10-14T07:29:36.823382121Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: ZoneSystem.Load => Loaded 12,212 locations
+2026-10-14T07:29:36.836631159Z Oct 14 07:29:36 supervisord: valheim-server 10/14/2026 07:29:36: ZDOMan.LoadChunks - Starting to load 117,297 zdos from 11 Chunks. SessionID: 1629036314, WorldVersion: 41 [DeepNorth]
+2026-10-14T07:29:37.413711302Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Loading ZDOs done [580ms]
+2026-10-14T07:29:37.433128060Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Adding ZDOs to Dictionary done [18ms]
+2026-10-14T07:29:37.458425543Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Adding ZDOs to Sectors done [24ms]
+2026-10-14T07:29:37.460069961Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Connecting Portals done [1ms]
+2026-10-14T07:29:37.469636797Z Oct 14 07:29:37 supervisord: valheim-server ConnectSpawners => Connected 48 spawners and 112 'done' spawners. Removed connection from 0 orphan spawn:s.
+2026-10-14T07:29:37.469647667Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Connecting Spawners done [9ms]
+2026-10-14T07:29:37.470090474Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks => Connecting SyncTransforms done [0ms]
+2026-10-14T07:29:37.470372149Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: ZDOMan.LoadChunks done [637ms]
+2026-10-14T07:29:37.474609399Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 0:  GiveMeScylla (Steam_76561199061832731, 3DA675ED31DC123D)
+2026-10-14T07:29:37.474626208Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 1:  RiviYa (Steam_76561199273932450, BC85A8FB8BDAD5BB)
+2026-10-14T07:29:37.474628539Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 2:  SaWwA (Steam_76561198671885983, F2BC897DC1889064)
+2026-10-14T07:29:37.474951174Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 3:  Bota_LK (Steam_76561199215262959, B1C5AE865146811B)
+2026-10-14T07:29:37.474962474Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 4:  Lakiya •_• (Steam_76561198785014660, BD291BEA59356303)
+2026-10-14T07:29:37.474966254Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 5:   (Steam_76561199227589670, 4A9D4143E596A018)
+2026-10-14T07:29:37.474968845Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 6:  Imnot_sadew (Steam_76561199729460576, D4F68FF527C338EC)
+2026-10-14T07:29:37.474971365Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Player history entry with index 7:  lafeerthajudeen (Steam_76561198726398246, 9B54AFED7A4093EA)
+2026-10-14T07:29:37.475367840Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Checking for any blocked players in the historical player list...
+2026-10-14T07:29:37.476465439Z Oct 14 07:29:37 supervisord: valheim-server 10/14/2026 07:29:37: Unloading unused assets
+2026-10-14T07:29:37.476681242Z Oct 14 07:29:37 supervisord: valheim-server Unloading 1 Unused Serialized files (Serialized files now loaded: 22)
+2026-10-14T07:29:44.265455497Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: PlayFab custom ID set to "PlayFab_Pappa Gama_2456_761e7db3ae6f0af986dfd473c8eb999a"
+2026-10-14T07:29:44.265495189Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Sending PlayFab login request (attempt 2)
+2026-10-14T07:29:44.287661581Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Semaphore type: ManualResetEventSlim
+2026-10-14T07:29:44.293179231Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Opened PlayFab server
+2026-10-14T07:29:44.293213571Z Oct 14 07:29:44 supervisord: valheim-server The shader Hidden/Dof/DepthOfFieldHdr (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) is not supported on this platform!
+2026-10-14T07:29:44.293217832Z Oct 14 07:29:44 supervisord: valheim-server The image effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) has been disabled as it's not supported on the current platform.
+2026-10-14T07:29:44.293220612Z Oct 14 07:29:44 supervisord: valheim-server The shader Hidden/SunShaftsComposite (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+2026-10-14T07:29:44.293223232Z Oct 14 07:29:44 supervisord: valheim-server The shader Hidden/SimpleClear (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+2026-10-14T07:29:44.293239392Z Oct 14 07:29:44 supervisord: valheim-server The image effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) has been disabled as it's not supported on the current platform.
+2026-10-14T07:29:44.449867806Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Game server connected
+2026-10-14T07:29:44.679363741Z Oct 14 07:29:44 supervisord: valheim-server Unloading 2 unused Assets to reduce memory usage. Loaded Objects now: 280342.
+2026-10-14T07:29:44.679402292Z Oct 14 07:29:44 supervisord: valheim-server Total: 186.426383 ms (FindLiveObjects: 21.535528 ms CreateObjectMapping: 25.623203 ms MarkObjects: 138.109811 ms  DeleteObjects: 1.156812 ms)
+2026-10-14T07:29:44.710025813Z Oct 14 07:29:44 supervisord: valheim-server [AmplifyOcclusion] GBuffer Normals only available in Camera Deferred Shading mode. Switched to Camera source.
+2026-10-14T07:29:44.734584335Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Logged in PlayFab user via custom ID
+2026-10-14T07:29:44.735590542Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: PlayFab logged in as "PlayFab_Pappa Gama_2456_761e7db3ae6f0af986dfd473c8eb999a"
+2026-10-14T07:29:44.735599831Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: PlayFab local entity ID is 76F45D992E7898A2
+2026-10-14T07:29:44.736187421Z Oct 14 07:29:44 supervisord: valheim-server IPv4, returning 172.105.121.226:2456
+2026-10-14T07:29:44.736552766Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: New session server "Pappa Gama" that has join code , now 0 player(s)
+2026-10-14T07:29:44.736558647Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Register PlayFab server "Pappa Gama" with IP 172.105.121.226:2456
+2026-10-14T07:29:44.736966784Z Oct 14 07:29:44 supervisord: valheim-server 10/14/2026 07:29:44: Server 'Pappa Gama' begin PlayFab create and join network for server 
+2026-10-14T07:29:46.036155635Z Oct 14 07:29:46 supervisord: valheim-server 10/14/2026 07:29:46: Joined PlayFab Party network with ID "91c2d995-9110-4037-a80c-2545d79c4c55|AwAmUHuI1VAOHs1Azr9oFBeB0o/5TVNvdXRoZWFzdEFzaWEAAAAAAAAAJnlhtFmwm2+5xoip1gMQZO0ZPAJr9HsbOYa1hNGP3Va8FU1kbnM4MWU1LWQ3YTMzZTQzLTBhNDUtNDRlYS1iODkzLWJiOWFiZGI0YjI0Mi5zb3V0aGVhc3Rhc2lhLmNsb3VkYXBwLmF6dXJlLmNvbQ=="
+2026-10-14T07:29:46.040143941Z Oct 14 07:29:46 supervisord: valheim-server This is the serverIP used to register the server: 172.105.121.226:2456
+2026-10-14T07:29:46.267860746Z Oct 14 07:29:46 supervisord: valheim-server 10/14/2026 07:29:46: Created PlayFab lobby with ID "65cae7dc-751e-4585-85f0-42f98430e14c.r-20260323", ConnectionString "cv2:65cae7dc-751e-4585-85f0-42f98430e14c.r-20260323|451107|kv1:kbbf3WMZcf07JrJlBrnEZDpuxD0El8n8xJOhkQJl3Ek=" and owned by "76F45D992E7898A2"
+2026-10-14T07:29:46.267988939Z Oct 14 07:29:46 supervisord: valheim-server 10/14/2026 07:29:46: Session "Pappa Gama" registered with join code 598008
+2026-10-14T07:29:46.501797815Z Oct 14 07:29:46 supervisord: valheim-server 10/14/2026 07:29:46: Retry join-code check 99
+2026-10-14T07:29:47.934671434Z Oct 14 07:29:47 supervisord: valheim-server 10/14/2026 07:29:47: Session "Pappa Gama" with join code 598008 and IP 172.105.121.226:2456 is active with 0 player(s)
+2026-10-14T07:30:06.271427775Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: PlayFab listen socket child connected to remote player E7DE53F976FE66E2
+2026-10-14T07:30:06.271465406Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: Player joined server "Pappa Gama" that has join code 598008, now 1 player(s)
+2026-10-14T07:30:06.303140564Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: ZRpc timeout set to 90s 
+2026-10-14T07:30:06.308080075Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: Muted PlayFab remote player E7DE53F976FE66E2
+2026-10-14T07:30:06.308833627Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: PlayFab socket with remote ID playfab/E7DE53F976FE66E2 received local Platform ID Steam_76561199227589670
+2026-10-14T07:30:06.336987698Z Oct 14 07:30:06 supervisord: valheim-server 10/14/2026 07:30:06: Got handshake from client playfab/E7DE53F976FE66E2
+2026-10-14T07:30:13.738659626Z Oct 14 07:30:13 supervisord: valheim-server 10/14/2026 07:30:13: Network version check, their:40, mine:40
+2026-10-14T07:30:13.752876849Z Oct 14 07:30:13 supervisord: valheim-server 10/14/2026 07:30:13: Checking for any blocked players in the historical player list...
+2026-10-14T07:30:13.753928396Z Oct 14 07:30:13 supervisord: valheim-server 10/14/2026 07:30:13: Server: New peer connected,sending global keys
+2026-10-14T07:30:36.640317322Z Oct 14 07:30:36 supervisord: valheim-server 10/14/2026 07:30:36: Checking for any blocked players in the historical player list...
+2026-10-14T07:30:40.874857521Z Oct 14 07:30:40 supervisord: valheim-server 10/14/2026 07:30:40: Got character ZDOID from Kalpa : 563490065:1
+2026-10-14T07:36:44.757550099Z Oct 14 07:36:44 supervisord: valheim-server 10/14/2026 07:36:44: Update PlayFab entity token
+2026-10-14T07:39:44.708508059Z Oct 14 07:39:44 supervisord: valheim-server 10/14/2026 07:39:44:  Connections 1 ZDOS:117299  sent:0 recv:354
+2026-10-14T07:41:43.018045870Z Oct 14 07:41:43 supervisord: valheim-server 10/14/2026 07:41:43: Lobby 65cae7dc-751e-4585-85f0-42f98430e14c.r-20260323 for world 'Pappa Gama' and network 91c2d995-9110-4037-a80c-2545d79c4c55|AwAmUHuI1VAOHs1Azr9oFBeB0o/5TVNvdXRoZWFzdEFzaWEAAAAAAAAAJnlhtFmwm2+5xoip1gMQZO0ZPAJr9HsbOYa1hNGP3Va8FU1kbnM4MWU1LWQ3YTMzZTQzLTBhNDUtNDRlYS1iODkzLWJiOWFiZGI0YjI0Mi5zb3V0aGVhc3Rhc2lhLmNsb3VkYXBwLmF6dXJlLmNvbQ== refreshed

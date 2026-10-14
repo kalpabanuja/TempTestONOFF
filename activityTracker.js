@@ -18,6 +18,54 @@ const STORAGE_FILE = path.join(DATA_DIR, 'user_activity.json');
 const RETENTION_DAYS = 14;
 const RETENTION_MS = RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
+// Helper: Clean and normalize player character names (strips trailing auxiliary verbs like ' has')
+function cleanPlayerName(name) {
+  if (!name || typeof name !== 'string') return '';
+  return name
+    .trim()
+    .replace(/^<|>$/g, '')
+    .replace(/\s+(?:has|have|is|was|had)$/i, '')
+    .trim();
+}
+
+// Helper: Extract location coordinates like "(120.5, 34.2, -450.0)" or "at (120, 34, -450)"
+function extractLocation(text) {
+  if (!text || typeof text !== 'string') return { cleanText: text || '', location: null };
+  const m = text.match(/(?:at|pos:?|coordinates:?|location:?|@)?\s*(\(-?\d+(?:\.\d+)?,\s*-?\d+(?:\.\d+)?(?:,\s*-?\d+(?:\.\d+)?)?\))/i);
+  if (m) {
+    const loc = m[1];
+    const clean = text.replace(m[0], '').replace(/\s{2,}/g, ' ').trim();
+    return { cleanText: clean, location: loc };
+  }
+  return { cleanText: text, location: null };
+}
+
+// Helper: Validate whether a string is a genuine player character name
+function isValidPlayer(name) {
+  if (!name || typeof name !== 'string') return false;
+  const lower = name.toLowerCase().trim();
+  if (lower.length < 2) return false;
+  if (
+    lower === 'server' ||
+    lower === 'valheim' ||
+    lower === 'mod' ||
+    lower === 'discordconnector' ||
+    lower === 'system' ||
+    lower === 'world' ||
+    lower === 'security alert' ||
+    lower === 'security system' ||
+    lower === 'connected viking' ||
+    lower === '0:0' ||
+    lower === '<null>' ||
+    lower.startsWith('playfab/') ||
+    lower.startsWith('steam/') ||
+    lower.startsWith('client (')
+  ) {
+    return false;
+  }
+  return true;
+}
+
 class ActivityTracker {
   constructor() {
     this.events = [];
@@ -67,29 +115,35 @@ class ActivityTracker {
         this.events = Array.isArray(data.events) ? data.events : [];
         this.players = typeof data.players === 'object' && data.players !== null ? data.players : {};
 
-        // Scrub any corrupted / dummy players from previous parser versions
-        for (const key of Object.keys(this.players)) {
-          if (
-            key.startsWith('playfab/') ||
-            key.startsWith('steam/') ||
-            key.startsWith('Client (') ||
-            key === 'Connected Viking' ||
-            key === '0:0' ||
-            key === 'System' ||
-            key === 'World' ||
-            key === 'Security Alert' ||
-            key === 'Security System'
-          ) {
+        // Scrub corrupted, dummy, or dirty players (e.g. 'Test has', 'Mod', internal tags)
+        for (const [key, val] of Object.entries(this.players)) {
+          const cleaned = cleanPlayerName(key);
+          if (!isValidPlayer(cleaned) || cleaned !== key) {
             delete this.players[key];
+            if (isValidPlayer(cleaned) && !this.players[cleaned]) {
+              val.name = cleaned;
+              this.players[cleaned] = val;
+            }
           }
         }
 
-        // Scrub duplicate dummy leave events from previous parser
+        // Clean any trailing 'has' in past event player names
+        for (const evt of this.events) {
+          if (evt.player) {
+            evt.player = cleanPlayerName(evt.player);
+          }
+        }
+
+        // Scrub duplicate dummy leave events and false-positive Unauthorized Access events
         this.events = this.events.filter(
-          (e) => e.player !== 'Connected Viking' && !(e.player && e.player.startsWith('playfab/'))
+          (e) =>
+            e.player !== 'Connected Viking' &&
+            !(e.player && e.player.startsWith('playfab/')) &&
+            !(e.title === 'Unauthorized Access Blocked' && /checking for any blocked players/i.test(e.details || e.raw || ''))
         );
 
         console.log(`[activity] Loaded ${this.events.length} historical events and ${Object.keys(this.players).length} players.`);
+        this.backfillStatsFromEvents();
       }
     } catch (err) {
       console.warn('[activity] Failed to read activity storage, starting fresh:', err.message);
@@ -162,20 +216,10 @@ class ActivityTracker {
   // Update or register a player record
   registerPlayer(name, { ip = null, platformId = null, online = true, timestamp = Date.now() } = {}) {
     if (!name || name === '0:0' || name === '<null>') return;
-    const cleanName = name.trim();
+    const cleanName = cleanPlayerName(name);
 
     // Prevent internal server tags, socket strings, or dummy names from creating player records
-    if (
-      cleanName.startsWith('playfab/') ||
-      cleanName.startsWith('steam/') ||
-      cleanName.startsWith('Client (') ||
-      cleanName === 'Connected Viking' ||
-      cleanName === 'System' ||
-      cleanName === 'World' ||
-      cleanName === 'Security Alert' ||
-      cleanName === 'Security System' ||
-      cleanName.length < 2
-    ) {
+    if (!isValidPlayer(cleanName)) {
       return;
     }
 
@@ -194,11 +238,30 @@ class ActivityTracker {
         firstSeen: timestamp,
         lastSeen: timestamp,
         sessionCount: 1,
+        totalUptimeMs: 0,
+        sessionStartTime: online ? timestamp : null,
+        deaths: 0,
+        kills: 0,
+        builds: 0,
+        harvests: 0,
+        pickups: 0,
+        pings: 0,
+        shouts: 0,
+        killsBreakdown: {},
+        buildsBreakdown: {},
+        harvestsBreakdown: {},
+        lastLocation: null,
+        lastDeathCause: null,
+        lastDeathLocation: null,
       };
     } else {
       const p = this.players[cleanName];
+      this.ensurePlayerStats(p);
       if (ip && ip !== 'Direct Connect') p.ip = ip;
       if (platformId && platformId !== 'Unknown') p.platformId = platformId;
+      if (online && p.status !== 'online') {
+        p.sessionStartTime = timestamp;
+      }
       p.status = online ? 'online' : p.status;
       p.lastSeen = Math.max(p.lastSeen || 0, timestamp);
       if (online) p.sessionCount = (p.sessionCount || 0) + 1;
@@ -209,7 +272,9 @@ class ActivityTracker {
 
   setPlayerStatus(name, online, timestamp = Date.now()) {
     if (!name) return;
-    const cleanName = name.trim();
+    const cleanName = cleanPlayerName(name);
+    if (!isValidPlayer(cleanName)) return;
+
     if (online) {
       this.currentlyOnline.add(cleanName);
     } else {
@@ -217,8 +282,21 @@ class ActivityTracker {
     }
 
     if (this.players[cleanName]) {
-      this.players[cleanName].status = online ? 'online' : 'offline';
-      this.players[cleanName].lastSeen = Math.max(this.players[cleanName].lastSeen || 0, timestamp);
+      const p = this.players[cleanName];
+      this.ensurePlayerStats(p);
+      if (online) {
+        if (p.status !== 'online') {
+          p.sessionStartTime = timestamp;
+        }
+        p.status = 'online';
+      } else {
+        if (p.sessionStartTime) {
+          p.totalUptimeMs = (p.totalUptimeMs || 0) + Math.max(0, timestamp - p.sessionStartTime);
+          p.sessionStartTime = null;
+        }
+        p.status = 'offline';
+      }
+      p.lastSeen = Math.max(p.lastSeen || 0, timestamp);
       this.save();
     }
   }
@@ -231,6 +309,7 @@ class ActivityTracker {
     severity = 'info', // 'info', 'warn', 'danger'
     title = '',
     details = '',
+    location = null,
     raw = '',
     timestamp = Date.now(),
   }) {
@@ -243,6 +322,47 @@ class ActivityTracker {
     }
     if (!ip && this.lastObservedIp) {
       ip = this.lastObservedIp;
+    }
+
+    // Update player profile statistics
+    if (player && this.players[player]) {
+      const p = this.players[player];
+      this.ensurePlayerStats(p);
+      if (location) p.lastLocation = location;
+
+      if (type === 'death') {
+        p.deaths = (p.deaths || 0) + 1;
+        if (details) p.lastDeathCause = details;
+        if (location) p.lastDeathLocation = location;
+      } else if (title === 'Creature Slayed') {
+        p.kills = (p.kills || 0) + 1;
+        const km = (details || '').match(/Defeated (.+?) in combat/i);
+        if (km) {
+          const t = km[1].trim();
+          p.killsBreakdown = p.killsBreakdown || {};
+          p.killsBreakdown[t] = (p.killsBreakdown[t] || 0) + 1;
+        }
+      } else if (title === 'Structure Placed') {
+        p.builds = (p.builds || 0) + 1;
+        const bm = (details || '').match(/Built\/placed: (.+?)\./i);
+        if (bm) {
+          const it = bm[1].trim();
+          p.buildsBreakdown = p.buildsBreakdown || {};
+          p.buildsBreakdown[it] = (p.buildsBreakdown[it] || 0) + 1;
+        }
+      } else if (title === 'Resource Harvested') {
+        p.harvests = (p.harvests || 0) + 1;
+        const hm = (details || '').match(/Harvested: (.+?)\./i);
+        if (hm) {
+          const r = hm[1].trim();
+          p.harvestsBreakdown = p.harvestsBreakdown || {};
+          p.harvestsBreakdown[r] = (p.harvestsBreakdown[r] || 0) + 1;
+        }
+      } else if (title === 'Map Ping') {
+        p.pings = (p.pings || 0) + 1;
+      } else if (title === 'World Shout / Chat') {
+        p.shouts = (p.shouts || 0) + 1;
+      }
     }
 
     // Deduplicate identical events within 2 seconds
@@ -271,6 +391,7 @@ class ActivityTracker {
       severity,
       title,
       details,
+      location: location || null,
       raw: (raw || '').slice(0, 300),
     };
 
@@ -531,73 +652,14 @@ class ActivityTracker {
       });
     }
 
-    // 8. Modded/Server In-Game Action: Mining / Harvesting Resources
-    // Allow spaces in player names (.+?) and require specific verb forms
-    const mineMatch = line.match(/(?:Player\s+)?(.+?)\s+(?:mined|harvested|chopped|collected|gathered)\s+(.+)/i);
-    if (mineMatch) {
-      const name = mineMatch[1].trim();
-      const resource = mineMatch[2].trim();
-      if (name.length >= 2 && !name.startsWith('playfab/') && !name.startsWith('steam/')) {
-        this.registerPlayer(name, { online: true, timestamp });
-        return this.recordEvent({
-          player: name,
-          type: 'action',
-          severity: 'info',
-          title: 'Resource Harvested',
-          details: `Harvested/Mined ${resource}.`,
-          raw: line,
-          timestamp,
-        });
-      }
+    // 8. Handshake detection (capture client IP without creating dummy player)
+    const handshakeMatch = line.match(/Got handshake from client\s+([A-Za-z0-9_/-]+)/i);
+    if (handshakeMatch) {
+      this.refreshClientSockets().catch(() => {});
+      return null; // Don't create dummy player card for playfab/... or steam/...
     }
 
-    // 9. Modded/Server In-Game Action: Build / Place events
-    // (e.g. from mods that log "PlayerName placed Workbench" or "PlayerName built Campfire")
-    const buildMatch = line.match(/(?:Player\s+)?(.+?)\s+(?:placed|built|constructed|crafted|built a|placed a|created)\s+(.+)/i);
-    if (buildMatch) {
-      const name = buildMatch[1].trim();
-      const item = buildMatch[2].trim();
-      if (name.length >= 2 && !name.startsWith('playfab/') && !name.startsWith('steam/')) {
-        this.registerPlayer(name, { online: true, timestamp });
-        return this.recordEvent({
-          player: name,
-          type: 'action',
-          severity: 'info',
-          title: 'Structure Placed',
-          details: `Placed/Built: ${item}.`,
-          raw: line,
-          timestamp,
-        });
-      }
-    }
-
-    // 10. Modded/Server In-Game Action: Monster / Boss Kills
-    // IMPORTANT: Only match lines from actual mods (not vanilla server lines like "Player connection lost").
-    // Require the line to NOT start with known vanilla prefixes before attempting the kill match.
-    if (
-      !line.match(/^\d{4}-\d{2}-\d{2}T/) && // Not a docker-timestamp-only line
-      !line.match(/Player connection|Closing socket|Disposing socket|ZNet|ZDO|ZDOS|DungeonDB|Valheim version|ZNetScene|Game server/i)
-    ) {
-      const killMatch = line.match(/(?:Player\s+)?(.+?)\s+(?:killed|slayed|slew|defeated|destroyed)\s+(?:a |an |the )?(.+)/i);
-      if (killMatch) {
-        const name = killMatch[1].trim();
-        const target = killMatch[2].trim();
-        if (name.length >= 2 && !name.startsWith('playfab/') && !name.startsWith('steam/') && name !== 'Player') {
-          this.registerPlayer(name, { online: true, timestamp });
-          return this.recordEvent({
-            player: name,
-            type: 'action',
-            severity: 'info',
-            title: 'Creature Slayed',
-            details: `Defeated ${target} in combat.`,
-            raw: line,
-            timestamp,
-          });
-        }
-      }
-    }
-
-    // 10. World Chat / Shout: "<Player> message" or "Player shouts: message"
+    // 9. World Chat / Shout: "<Player> message" or "Player shouts: message"
     const chatMatch = line.match(/^(?:<([A-Za-z0-9_ ]+)>|([A-Za-z0-9_ ]+)\s*(?:shouts|says|whispers):\s*)(.+)/i);
     if (chatMatch) {
       const sender = (chatMatch[1] || chatMatch[2] || '').trim();
@@ -616,15 +678,12 @@ class ActivityTracker {
       }
     }
 
-    // 11. Handshake detection (capture client IP without creating dummy player)
-    const handshakeMatch = line.match(/Got handshake from client\s+([A-Za-z0-9_/-]+)/i);
-    if (handshakeMatch) {
-      this.refreshClientSockets().catch(() => {});
-      return null; // Don't create dummy player card for playfab/... or steam/...
-    }
-
-    // 12. Banned or Unauthorized access attempts (SUSPICIOUS)
-    if (/blocked players|banned player|not in whitelist/i.test(line)) {
+    // 10. Banned or Unauthorized access attempts (SUSPICIOUS)
+    // NOTE: Ignore routine Valheim checks like "Checking for any blocked players in the historical player list..."
+    if (
+      !/checking for any blocked players|blocked players in the historical/i.test(line) &&
+      /(?:is\s+banned|banned\s+player|not\s+in\s+(?:the\s+)?whitelist|kicking:.*whitelist|blocked\s+connection)/i.test(line)
+    ) {
       return this.recordEvent({
         player: 'Security System',
         type: 'suspicious',
@@ -672,165 +731,181 @@ class ActivityTracker {
   }
 
   // Ingest events from DiscordConnector or other BepInEx webhooks
-  ingestModMessage({ rawMessage, author, title, raw }) {
+  ingestModMessage({ rawMessage, author, title, location: explicitLoc, raw }) {
     if (!rawMessage) return null;
     const timestamp = Date.now();
-    const text = rawMessage.trim();
+    const rawTrimmed = rawMessage.trim();
+    const { cleanText, location: extractedLoc } = extractLocation(rawTrimmed);
+    const location = explicitLoc || extractedLoc || null;
+    const text = cleanText || rawTrimmed;
 
-    // 1. Player Joined (e.g. "Kalpa has arrived!" or "Kalpa joined the game")
-    const joinMatch = text.match(/^(.+?)\s+(?:has arrived|has joined|joined the (?:server|game)|connected to the server)/i);
+    // Determine fallback player identity from webhook author/sender
+    const fallbackPlayer = cleanPlayerName(author || '');
+    const defaultPlayer = isValidPlayer(fallbackPlayer) ? fallbackPlayer : null;
+
+    const withLoc = (msg) => (location && !msg.includes(location) ? `${msg} at ${location}` : msg);
+
+    // 1. Player Joined (e.g. "Kalpa has arrived!" or "has arrived!" with author "Kalpa")
+    const joinMatch = text.match(/^(?:(.+?)\s+)?(?:has\s+|have\s+)?(?:arrived|joined(?:\s+the\s+(?:server|game))?|connected(?:\s+to\s+the\s+server)?)[!.]*$/i);
     if (joinMatch) {
-      const player = joinMatch[1].trim();
-      this.currentlyOnline.add(player);
-      this.registerPlayer(player, { online: true, timestamp });
-      return this.recordEvent({
-        player,
-        type: 'join',
-        severity: 'info',
-        title: 'Viking Joined Realm',
-        details: text,
-        raw,
-        timestamp,
-      });
+      const candidate = (joinMatch[1] || defaultPlayer || '').trim();
+      const player = cleanPlayerName(candidate);
+      if (isValidPlayer(player)) {
+        this.currentlyOnline.add(player);
+        this.registerPlayer(player, { online: true, timestamp });
+        return this.recordEvent({
+          player,
+          type: 'join',
+          severity: 'info',
+          title: 'Viking Joined Realm',
+          details: withLoc(`${player} arrived in the realm.`),
+          location,
+          raw,
+          timestamp,
+        });
+      }
     }
 
-    // 2. Player Left (e.g. "Kalpa has left." or "Kalpa left the game" or "Kalpa disconnected")
-    const leaveMatch = text.match(/^(.+?)\s+(?:has left|left the (?:server|game)|disconnected from the server|disconnected\.?$)/i);
+    // 2. Player Left (e.g. "Kalpa has left." or "has left" with author "Kalpa")
+    const leaveMatch = text.match(/^(?:(.+?)\s+)?(?:has\s+|have\s+)?(?:left(?:\s+the\s+(?:server|game))?|disconnected(?:\s+from\s+the\s+server)?)[!.]*$/i);
     if (leaveMatch) {
-      const player = leaveMatch[1].trim();
-      this.currentlyOnline.delete(player);
-      this.setPlayerStatus(player, false, timestamp);
-      return this.recordEvent({
-        player,
-        type: 'leave',
-        severity: 'info',
-        title: 'Viking Departed Realm',
-        details: text,
-        raw,
-        timestamp,
-      });
+      const candidate = (leaveMatch[1] || defaultPlayer || '').trim();
+      const player = cleanPlayerName(candidate);
+      if (isValidPlayer(player)) {
+        this.currentlyOnline.delete(player);
+        this.setPlayerStatus(player, false, timestamp);
+        return this.recordEvent({
+          player,
+          type: 'leave',
+          severity: 'info',
+          title: 'Viking Departed Realm',
+          details: withLoc(`${player} departed from the realm.`),
+          location,
+          raw,
+          timestamp,
+        });
+      }
     }
 
-    // 3. Player Death (e.g. "Kalpa died." or "Kalpa was killed by Troll")
-    // Must come BEFORE the creature-kill match to avoid "X was killed by Y" being parsed as X killing Y.
-    const deathMatch = text.match(/^(.+?)\s+(?:has died|died\.?$|was killed by|perished|succumbed|fell victim to)\s*(.*)/i);
+    // 3. Player Death (e.g. "Kalpa died." or "Kalpa was killed by Troll" or "has died")
+    const deathMatch = text.match(/^(?:(.+?)\s+)?(?:has\s+|have\s+)?(?:died\.?$|was killed by|died to|was slain by|perished|succumbed(?:\s+to)?|fell victim to)\s*(.*)/i);
     if (deathMatch) {
-      const player = deathMatch[1].trim();
+      const candidate = (deathMatch[1] || defaultPlayer || '').trim();
+      const player = cleanPlayerName(candidate);
       const cause = (deathMatch[2] || '').trim();
-      this.registerPlayer(player, { online: true, timestamp });
-      return this.recordEvent({
-        player,
-        type: 'death',
-        severity: 'warn',
-        title: 'Viking Fallen in Battle',
-        details: cause ? `Slain by ${cause}` : text,
-        raw,
-        timestamp,
-      });
+      if (isValidPlayer(player)) {
+        this.registerPlayer(player, { online: true, timestamp });
+        return this.recordEvent({
+          player,
+          type: 'death',
+          severity: 'warn',
+          title: 'Viking Fallen in Battle',
+          details: withLoc(cause ? `Slain by ${cause}` : `${player} died in battle.`),
+          location,
+          raw,
+          timestamp,
+        });
+      }
     }
 
-    // 4. Map Ping — before chat so "pinged the map" doesn't get swallowed by the colon-chat pattern
-    const pingMatch = text.match(/^(.+?)\s+pinged the map/i);
+    // 4. Map Ping — before chat so "pinged the map" doesn't get swallowed by chat
+    const pingMatch = text.match(/^(?:(.+?)\s+)?pinged the map/i);
     if (pingMatch) {
-      const player = pingMatch[1].trim();
-      this.registerPlayer(player, { online: true, timestamp });
-      return this.recordEvent({
-        player,
-        type: 'action',
-        severity: 'info',
-        title: 'Map Ping',
-        details: `${player} pinged coordinates on the world map.`,
-        raw,
-        timestamp,
-      });
+      const candidate = (pingMatch[1] || defaultPlayer || '').trim();
+      const player = cleanPlayerName(candidate);
+      if (isValidPlayer(player)) {
+        this.registerPlayer(player, { online: true, timestamp });
+        return this.recordEvent({
+          player,
+          type: 'action',
+          severity: 'info',
+          title: 'Map Ping',
+          details: withLoc(`${player} pinged coordinates on the world map.`),
+          location,
+          raw,
+          timestamp,
+        });
+      }
     }
 
-    // 5. Creature / Boss Kill (e.g. "Kalpa killed a Troll", "Kalpa slew Eikthyr", "Kalpa defeated Bonemass")
-    // Must come BEFORE the chat colon pattern so "Kalpa killed a Troll" isn't swallowed.
-    const creatureKillMatch = text.match(/^(.+?)\s+(?:killed|slayed|slew|defeated|destroyed|slain)\s+(?:a |an |the )?(.+)/i);
+    // 5. Creature / Boss Kill (e.g. "Kalpa killed a Troll" or "Kalpa has killed a Troll")
+    const creatureKillMatch = text.match(/^(?:(.+?)\s+)?(?:has\s+|have\s+)?(?:killed|slayed|slew|defeated|destroyed|slain)\s+(?:a |an |the )?(.+)/i);
     if (creatureKillMatch) {
-      const player = creatureKillMatch[1].trim();
+      const candidate = (creatureKillMatch[1] || defaultPlayer || '').trim();
+      const player = cleanPlayerName(candidate);
       const target = creatureKillMatch[2].replace(/[!.]+$/, '').trim();
-      // Guard: don't confuse "was killed by" death events (caught above) or server lines
-      if (
-        player.length >= 2 &&
-        !player.toLowerCase().includes('server') &&
-        !player.startsWith('playfab/') &&
-        !player.startsWith('steam/')
-      ) {
+      if (isValidPlayer(player)) {
         this.registerPlayer(player, { online: true, timestamp });
         return this.recordEvent({
           player,
           type: 'action',
           severity: 'info',
           title: 'Creature Slayed',
-          details: `Defeated ${target} in combat.`,
+          details: withLoc(`Defeated ${target} in combat.`),
+          location,
           raw,
           timestamp,
         });
       }
     }
 
-    // 6. Build / Place events (e.g. "Kalpa placed a Workbench", "Kalpa built a Campfire")
-    const buildMatch = text.match(/^(.+?)\s+(?:placed|built|constructed|crafted|created)\s+(?:a |an |the )?(.+)/i);
+    // 6. Build / Place events (e.g. "Kalpa placed a Workbench" or "Kalpa has built a Campfire")
+    const buildMatch = text.match(/^(?:(.+?)\s+)?(?:has\s+|have\s+)?(?:placed|built|constructed|crafted|created)\s+(?:a |an |the )?(.+)/i);
     if (buildMatch) {
-      const player = buildMatch[1].trim();
+      const candidate = (buildMatch[1] || defaultPlayer || '').trim();
+      const player = cleanPlayerName(candidate);
       const item = buildMatch[2].replace(/[!.]+$/, '').trim();
-      if (
-        player.length >= 2 &&
-        !player.toLowerCase().includes('server') &&
-        !player.startsWith('playfab/') &&
-        !player.startsWith('steam/')
-      ) {
+      if (isValidPlayer(player)) {
         this.registerPlayer(player, { online: true, timestamp });
         return this.recordEvent({
           player,
           type: 'action',
           severity: 'info',
           title: 'Structure Placed',
-          details: `Built/placed: ${item}.`,
+          details: withLoc(`Built/placed: ${item}.`),
+          location,
           raw,
           timestamp,
         });
       }
     }
 
-    // 7. Loot / Pickup events (e.g. "Kalpa picked up Coins x5", "Kalpa collected Dragon Egg")
-    const pickupMatch = text.match(/^(.+?)\s+(?:picked up|looted|collected|gathered|obtained|received)\s+(.+)/i);
+    // 7. Loot / Pickup events (e.g. "Kalpa picked up Coins x5" or "Kalpa has collected Wood")
+    const pickupMatch = text.match(/^(?:(.+?)\s+)?(?:has\s+|have\s+)?(?:picked up|looted|collected|gathered|obtained|received|found)\s+(.+)/i);
     if (pickupMatch) {
-      const player = pickupMatch[1].trim();
+      const candidate = (pickupMatch[1] || defaultPlayer || '').trim();
+      const player = cleanPlayerName(candidate);
       const item = pickupMatch[2].replace(/[!.]+$/, '').trim();
-      if (
-        player.length >= 2 &&
-        !player.toLowerCase().includes('server') &&
-        !player.startsWith('playfab/')
-      ) {
+      if (isValidPlayer(player)) {
         this.registerPlayer(player, { online: true, timestamp });
         return this.recordEvent({
           player,
           type: 'action',
           severity: 'info',
           title: 'Item Acquired',
-          details: `Picked up: ${item}.`,
+          details: withLoc(`Picked up: ${item}.`),
+          location,
           raw,
           timestamp,
         });
       }
     }
 
-    // 8. Resource harvesting (e.g. "Kalpa mined Stone", "Kalpa chopped Oak")
-    const harvestMatch = text.match(/^(.+?)\s+(?:mined|harvested|chopped|gathered|cut down)\s+(.+)/i);
+    // 8. Resource harvesting (e.g. "Kalpa mined Stone" or "Kalpa has chopped Oak")
+    const harvestMatch = text.match(/^(?:(.+?)\s+)?(?:has\s+|have\s+)?(?:mined|harvested|chopped|cut down)\s+(.+)/i);
     if (harvestMatch) {
-      const player = harvestMatch[1].trim();
+      const candidate = (harvestMatch[1] || defaultPlayer || '').trim();
+      const player = cleanPlayerName(candidate);
       const resource = harvestMatch[2].replace(/[!.]+$/, '').trim();
-      if (player.length >= 2 && !player.startsWith('playfab/') && !player.startsWith('steam/')) {
+      if (isValidPlayer(player)) {
         this.registerPlayer(player, { online: true, timestamp });
         return this.recordEvent({
           player,
           type: 'action',
           severity: 'info',
           title: 'Resource Harvested',
-          details: `Harvested: ${resource}.`,
+          details: withLoc(`Harvested: ${resource}.`),
+          location,
           raw,
           timestamp,
         });
@@ -844,31 +919,29 @@ class ActivityTracker {
         type: 'action',
         severity: 'warn',
         title: 'Raid Event',
-        details: text,
+        details: withLoc(text),
+        location,
         raw,
         timestamp,
       });
     }
 
     // 10. Chat / Shout — comes LAST so specific action patterns above get priority
-    // Only matches lines with an explicit shout/say verb OR a colon-quoted message.
     const chatMatch = text.match(/^(.+?)\s+(?:shouts|says|whispers):\s*(.+)/i) ||
-                      text.match(/^(.+?):\s+"(.+)"/i);
+                      text.match(/^(.+?):\s+"?(.+?)"?$/i);
     if (chatMatch) {
-      const player = chatMatch[1].trim();
+      const player = cleanPlayerName(chatMatch[1]);
       const chat = chatMatch[2].trim();
-      if (
-        player.length >= 2 &&
-        player.toLowerCase() !== 'server' &&
-        player.toLowerCase() !== 'valheim'
-      ) {
+      if (isValidPlayer(player)) {
+        this.currentlyOnline.add(player);
         this.registerPlayer(player, { online: true, timestamp });
         return this.recordEvent({
           player,
           type: 'action',
           severity: 'info',
           title: 'World Shout / Chat',
-          details: `"${chat.replace(/^"|"$/g, '')}"`,
+          details: withLoc(`"${chat.replace(/^"|"$/g, '')}"`),
+          location,
           raw,
           timestamp,
         });
@@ -876,12 +949,14 @@ class ActivityTracker {
     }
 
     // 11. Generic fallthrough — catch everything else from the mod
+    const displayPlayer = defaultPlayer || 'Mod';
     return this.recordEvent({
-      player: author && author !== 'Valheim' ? author : 'Mod',
+      player: displayPlayer,
       type: 'action',
       severity: 'info',
       title: title || 'Server Event',
-      details: text,
+      details: withLoc(text),
+      location,
       raw,
       timestamp,
     });
@@ -999,6 +1074,204 @@ class ActivityTracker {
     this.events = [];
     this.saveImmediate();
     return { success: true, count: 0 };
+  }
+
+  // Ensure default stats structure exists on a player record
+  ensurePlayerStats(p) {
+    if (!p) return;
+    if (typeof p.totalUptimeMs !== 'number') p.totalUptimeMs = 0;
+    if (typeof p.deaths !== 'number') p.deaths = 0;
+    if (typeof p.kills !== 'number') p.kills = 0;
+    if (typeof p.builds !== 'number') p.builds = 0;
+    if (typeof p.harvests !== 'number') p.harvests = 0;
+    if (typeof p.pickups !== 'number') p.pickups = 0;
+    if (typeof p.pings !== 'number') p.pings = 0;
+    if (typeof p.shouts !== 'number') p.shouts = 0;
+    if (!p.killsBreakdown) p.killsBreakdown = {};
+    if (!p.buildsBreakdown) p.buildsBreakdown = {};
+    if (!p.harvestsBreakdown) p.harvestsBreakdown = {};
+    if (!p.lastLocation) p.lastLocation = null;
+    if (!p.lastDeathCause) p.lastDeathCause = null;
+    if (!p.lastDeathLocation) p.lastDeathLocation = null;
+  }
+
+  // Populate stats from loaded event history
+  backfillStatsFromEvents() {
+    for (const p of Object.values(this.players)) {
+      this.ensurePlayerStats(p);
+    }
+    const anyStats = Object.values(this.players).some((p) => p.kills > 0 || p.deaths > 0 || p.builds > 0);
+    if (anyStats) return;
+
+    for (const e of this.events) {
+      if (!e.player || !isValidPlayer(e.player)) continue;
+      const cleanName = cleanPlayerName(e.player);
+      if (!this.players[cleanName]) continue;
+      const p = this.players[cleanName];
+
+      if (e.type === 'death') {
+        p.deaths = (p.deaths || 0) + 1;
+        if (e.details && !p.lastDeathCause) p.lastDeathCause = e.details;
+        if (e.location && !p.lastDeathLocation) p.lastDeathLocation = e.location;
+      } else if (e.title === 'Creature Slayed') {
+        p.kills = (p.kills || 0) + 1;
+        const m = (e.details || '').match(/Defeated (.+?) in combat/i);
+        if (m) {
+          const t = m[1].trim();
+          p.killsBreakdown = p.killsBreakdown || {};
+          p.killsBreakdown[t] = (p.killsBreakdown[t] || 0) + 1;
+        }
+      } else if (e.title === 'Structure Placed') {
+        p.builds = (p.builds || 0) + 1;
+        const m = (e.details || '').match(/Built\/placed: (.+?)\./i);
+        if (m) {
+          const it = m[1].trim();
+          p.buildsBreakdown = p.buildsBreakdown || {};
+          p.buildsBreakdown[it] = (p.buildsBreakdown[it] || 0) + 1;
+        }
+      } else if (e.title === 'Resource Harvested') {
+        p.harvests = (p.harvests || 0) + 1;
+        const m = (e.details || '').match(/Harvested: (.+?)\./i);
+        if (m) {
+          const r = m[1].trim();
+          p.harvestsBreakdown = p.harvestsBreakdown || {};
+          p.harvestsBreakdown[r] = (p.harvestsBreakdown[r] || 0) + 1;
+        }
+      } else if (e.title === 'Map Ping') {
+        p.pings = (p.pings || 0) + 1;
+      }
+
+      if (e.location && !p.lastLocation) {
+        p.lastLocation = e.location;
+      }
+    }
+  }
+
+  // Get full leaderboard data (Public & Admin)
+  getLeaderboard() {
+    const now = Date.now();
+    const playersList = Object.values(this.players).map((p) => {
+      this.ensurePlayerStats(p);
+      let uptimeMs = p.totalUptimeMs || 0;
+      const isOnline = (this.currentlyOnline && this.currentlyOnline.has(p.name)) || p.status === 'online';
+      if (isOnline && p.sessionStartTime) {
+        uptimeMs += Math.max(0, now - p.sessionStartTime);
+      }
+
+      const totalMinutes = Math.floor(uptimeMs / 60000);
+      const hours = Math.floor(totalMinutes / 60);
+      const mins = totalMinutes % 60;
+      const uptimeFormatted = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+      const kills = p.kills || 0;
+      const deaths = p.deaths || 0;
+      const kdRatio = deaths > 0 ? (kills / deaths).toFixed(1) : kills.toFixed(0);
+
+      // Score formula: kills (x10) + builds (x3) + harvests (x2) + hours (x5) - deaths (x2)
+      const score = Math.max(0, (kills * 10) + ((p.builds || 0) * 3) + ((p.harvests || 0) * 2) + (hours * 5) - (deaths * 2));
+
+      return {
+        name: p.name,
+        status: isOnline ? 'online' : 'offline',
+        uptimeMs,
+        uptimeFormatted,
+        sessionCount: p.sessionCount || 1,
+        firstSeen: p.firstSeen || p.lastSeen || now,
+        lastSeen: p.lastSeen || now,
+        kills,
+        deaths,
+        kdRatio,
+        lastDeathCause: p.lastDeathCause || null,
+        lastLocation: p.lastLocation || null,
+        builds: p.builds || 0,
+        harvests: p.harvests || 0,
+        pickups: p.pickups || 0,
+        pings: p.pings || 0,
+        shouts: p.shouts || 0,
+        score,
+      };
+    });
+
+    // Default sort by score descending
+    playersList.sort((a, b) => b.score - a.score || b.uptimeMs - a.uptimeMs);
+    playersList.forEach((p, idx) => {
+      p.rank = idx + 1;
+    });
+
+    // Determine Hall of Fame / Podium champions
+    const topKiller = playersList.slice().sort((a, b) => b.kills - a.kills)[0] || null;
+    const topSurvivor = playersList.slice().sort((a, b) => b.uptimeMs - a.uptimeMs)[0] || null;
+    const topBuilder = playersList.slice().sort((a, b) => b.builds - a.builds)[0] || null;
+    const topMiner = playersList.slice().sort((a, b) => b.harvests - a.harvests)[0] || null;
+    const mostFallen = playersList.slice().sort((a, b) => b.deaths - a.deaths)[0] || null;
+
+    return {
+      updatedAt: new Date().toISOString(),
+      totalPlayers: playersList.length,
+      onlinePlayers: playersList.filter((p) => p.status === 'online').length,
+      podium: {
+        topKiller: topKiller && topKiller.kills > 0 ? { name: topKiller.name, count: topKiller.kills } : null,
+        topSurvivor: topSurvivor && topSurvivor.uptimeMs > 0 ? { name: topSurvivor.name, count: topSurvivor.uptimeFormatted } : null,
+        topBuilder: topBuilder && topBuilder.builds > 0 ? { name: topBuilder.name, count: topBuilder.builds } : null,
+        topMiner: topMiner && topMiner.harvests > 0 ? { name: topMiner.name, count: topMiner.harvests } : null,
+        mostFallen: mostFallen && mostFallen.deaths > 0 ? { name: mostFallen.name, count: mostFallen.deaths } : null,
+      },
+      players: playersList,
+    };
+  }
+
+  // Get deep custom stats for a specific player (Public)
+  getPlayerStats(name) {
+    if (!name) return null;
+    const cleanName = cleanPlayerName(name);
+    const p = this.players[cleanName];
+    if (!p) return null;
+
+    this.ensurePlayerStats(p);
+    const now = Date.now();
+    let uptimeMs = p.totalUptimeMs || 0;
+    const isOnline = (this.currentlyOnline && this.currentlyOnline.has(cleanName)) || p.status === 'online';
+    if (isOnline && p.sessionStartTime) {
+      uptimeMs += Math.max(0, now - p.sessionStartTime);
+    }
+    const totalMinutes = Math.floor(uptimeMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    const uptimeFormatted = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+    const kills = p.kills || 0;
+    const deaths = p.deaths || 0;
+    const kdRatio = deaths > 0 ? (kills / deaths).toFixed(1) : kills.toFixed(0);
+
+    const lowerName = cleanName.toLowerCase();
+    const recentEvents = this.events
+      .filter((e) => e.player && e.player.toLowerCase() === lowerName)
+      .slice(0, 25);
+
+    return {
+      name: p.name,
+      status: isOnline ? 'online' : 'offline',
+      uptimeMs,
+      uptimeFormatted,
+      sessionCount: p.sessionCount || 1,
+      firstSeen: p.firstSeen || now,
+      lastSeen: p.lastSeen || now,
+      kills,
+      deaths,
+      kdRatio,
+      lastDeathCause: p.lastDeathCause || null,
+      lastDeathLocation: p.lastDeathLocation || null,
+      lastLocation: p.lastLocation || null,
+      builds: p.builds || 0,
+      harvests: p.harvests || 0,
+      pickups: p.pickups || 0,
+      pings: p.pings || 0,
+      shouts: p.shouts || 0,
+      killsBreakdown: p.killsBreakdown || {},
+      buildsBreakdown: p.buildsBreakdown || {},
+      harvestsBreakdown: p.harvestsBreakdown || {},
+      recentEvents,
+    };
   }
 }
 

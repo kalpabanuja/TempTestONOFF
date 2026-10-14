@@ -544,7 +544,13 @@ function applyRolePermissions() {
     if (roleName) roleName.textContent = isAdmin ? `Admin (${currentUsername})` : `User (${currentUsername})`;
   }
 
-  // 2. User Activity Nav Tab: Only admin can see user activity
+  // 2. Leaderboard Tab: Visible to ALL roles
+  const tabLeaderboard = document.getElementById('tabBtnLeaderboard');
+  if (tabLeaderboard) {
+    tabLeaderboard.style.display = 'inline-flex';
+  }
+
+  // 3. User Activity Nav Tab: Only admin can see user activities
   const tabActivity = document.getElementById('tabBtnActivity');
   if (tabActivity) {
     tabActivity.style.display = isAdmin ? 'inline-flex' : 'none';
@@ -570,9 +576,9 @@ function applyRolePermissions() {
 }
 
 function switchTab(tab) {
-  // Guard: Only admin can view user activity
+  // Guard: Only admin can view user activities
   if (tab === 'activity' && currentUserRole !== 'admin') {
-    showToast('✘ Access Denied: Only administrators can view User Activity.', true);
+    showToast('✘ Access Denied: Only administrators can view User Activities.', true);
     tab = 'dashboard';
   }
 
@@ -580,21 +586,27 @@ function switchTab(tab) {
 
   // Toggle tab buttons
   const btnDash = document.getElementById('tabBtnDashboard');
+  const btnLead = document.getElementById('tabBtnLeaderboard');
   const btnAct  = document.getElementById('tabBtnActivity');
   const btnMap  = document.getElementById('tabBtnMap');
   if (btnDash) btnDash.classList.toggle('active', tab === 'dashboard');
+  if (btnLead) btnLead.classList.toggle('active', tab === 'leaderboard');
   if (btnAct)  btnAct.classList.toggle('active', tab === 'activity');
   if (btnMap)  btnMap.classList.toggle('active', tab === 'map');
 
   // Toggle tab panes
   const paneDash = document.getElementById('tabContentDashboard');
+  const paneLead = document.getElementById('tabContentLeaderboard');
   const paneAct  = document.getElementById('tabContentActivity');
   const paneMap  = document.getElementById('tabContentMap');
   if (paneDash) paneDash.classList.toggle('active', tab === 'dashboard');
+  if (paneLead) paneLead.classList.toggle('active', tab === 'leaderboard');
   if (paneAct)  paneAct.classList.toggle('active', tab === 'activity');
   if (paneMap)  paneMap.classList.toggle('active', tab === 'map');
 
-  if (tab === 'activity') {
+  if (tab === 'leaderboard') {
+    loadLeaderboard();
+  } else if (tab === 'activity') {
     loadPlayers();
     loadActivityLogs();
   } else if (tab === 'map' && !mapLoaded) {
@@ -1085,6 +1097,378 @@ function copyMapLink() {
     ? `https://valheim-map.world/?seed=${encodeURIComponent(seed)}`
     : 'https://valheim-map.world/';
   copyToClipboard(url, document.getElementById('btnCopyMapLink'));
+}
+
+// ─── LEADERBOARD & WARRIOR CHRONICLES ─────────────────────────────────────────
+let rawLeaderboardData = null;
+let currentChroniclePlayer = null;
+
+async function loadLeaderboard() {
+  const podiumEl = document.getElementById('leaderboardPodium');
+  const listEl = document.getElementById('leaderboardList');
+  if (!podiumEl || !listEl) return;
+
+  try {
+    const res = await apiFetch('/api/leaderboard');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    rawLeaderboardData = data;
+    renderLeaderboardPodium(data.podium);
+    renderLeaderboardList(data.players || []);
+  } catch (err) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">⚠️</span>
+        <span class="empty-title">Leaderboard Unavailable</span>
+        <span class="empty-sub">Unable to connect to realm registry: ${err.message || 'Server error'}.</span>
+      </div>
+    `;
+  }
+}
+
+function renderLeaderboardPodium(podium = {}) {
+  const podiumEl = document.getElementById('leaderboardPodium');
+  if (!podiumEl) return;
+
+  const champions = [
+    {
+      title: 'Slayer of Beasts',
+      icon: '⚔️',
+      name: podium.topKiller ? podium.topKiller.name : 'Unclaimed',
+      stat: podium.topKiller ? `${podium.topKiller.count} Slain` : '0 kills',
+      desc: 'Most creatures defeated in combat',
+      badge: 'PvE Champion',
+      clickable: !!podium.topKiller
+    },
+    {
+      title: 'Ancient Mariner',
+      icon: '⏳',
+      name: podium.topSurvivor ? podium.topSurvivor.name : 'Unclaimed',
+      stat: podium.topSurvivor ? podium.topSurvivor.count : '0m',
+      desc: 'Longest active presence in realm',
+      badge: 'Realm Veteran',
+      clickable: !!podium.topSurvivor
+    },
+    {
+      title: 'Master Architect',
+      icon: '🔨',
+      name: podium.topBuilder ? podium.topBuilder.name : 'Unclaimed',
+      stat: podium.topBuilder ? `${podium.topBuilder.count} Erected` : '0 built',
+      desc: 'Most structures & defenses placed',
+      badge: 'High Carpenter',
+      clickable: !!podium.topBuilder
+    },
+    {
+      title: 'Mountain Delver',
+      icon: '⛏️',
+      name: podium.topMiner ? podium.topMiner.name : 'Unclaimed',
+      stat: podium.topMiner ? `${podium.topMiner.count} Extracted` : '0 mined',
+      desc: 'Most ores & timber gathered',
+      badge: 'Grand Miner',
+      clickable: !!podium.topMiner
+    },
+    {
+      title: 'Valhalla Veteran',
+      icon: '💀',
+      name: podium.mostFallen ? podium.mostFallen.name : 'None',
+      stat: podium.mostFallen ? `${podium.mostFallen.count} Fallen` : '0 deaths',
+      desc: 'Most valiant deaths in the wild',
+      badge: 'Odin\'s Guest',
+      clickable: !!podium.mostFallen
+    }
+  ];
+
+  podiumEl.innerHTML = champions.map(c => `
+    <div class="podium-card ${c.clickable ? 'clickable' : ''}" ${c.clickable ? `onclick="openPlayerModal('${escapeHtml(c.name)}')"` : ''}>
+      <div class="podium-card-top">
+        <span class="podium-trophy">${c.icon}</span>
+        <span class="podium-badge">${c.badge}</span>
+      </div>
+      <div class="podium-champion-name">${escapeHtml(c.name)}</div>
+      <div class="podium-champion-stat">${c.stat}</div>
+      <div class="podium-champion-desc">${c.desc}</div>
+    </div>
+  `).join('');
+}
+
+function renderLeaderboardList(players = []) {
+  const listEl = document.getElementById('leaderboardList');
+  if (!listEl) return;
+
+  if (players.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">🛡</span>
+        <span class="empty-title">No Vikings Recorded Yet</span>
+        <span class="empty-sub">Once warriors connect and venture into the world, their deeds and statistics will appear here.</span>
+      </div>
+    `;
+    return;
+  }
+
+  listEl.innerHTML = players.map(p => {
+    let rankBadge = `#${p.rank}`;
+    let rankClass = '';
+    if (p.rank === 1) { rankBadge = '🥇 1'; rankClass = 'rank-gold'; }
+    else if (p.rank === 2) { rankBadge = '🥈 2'; rankClass = 'rank-silver'; }
+    else if (p.rank === 3) { rankBadge = '🥉 3'; rankClass = 'rank-bronze'; }
+
+    const isOnline = p.status === 'online';
+
+    return `
+      <div class="leader-card ${rankClass}" onclick="openPlayerModal('${escapeHtml(p.name)}')">
+        <div class="leader-rank-badge">${rankBadge}</div>
+
+        <div class="leader-main-info">
+          <div class="leader-name-row">
+            <span class="leader-name">${escapeHtml(p.name)}</span>
+            <span class="status-indicator-dot ${isOnline ? 'online' : 'offline'}" title="${isOnline ? 'Online now' : 'Offline'}"></span>
+            ${p.lastLocation ? `<span class="leader-coord-badge" title="Last known coordinates">📍 ${escapeHtml(p.lastLocation)}</span>` : ''}
+          </div>
+          <div class="leader-sub-info">
+            <span>First joined: ${formatRelativeTime(p.firstSeen)}</span>
+            <span>•</span>
+            <span>Last active: ${isOnline ? '<strong style="color:var(--green)">Now</strong>' : formatRelativeTime(p.lastSeen)}</span>
+            <span>•</span>
+            <span>Sessions: ${p.sessionCount || 1}</span>
+          </div>
+        </div>
+
+        <div class="leader-stats-bar">
+          <div class="l-stat-item" title="Total Uptime / Playtime">
+            <span class="l-stat-val">⏳ ${p.uptimeFormatted}</span>
+            <span class="l-stat-lbl">Uptime</span>
+          </div>
+          <div class="l-stat-item" title="Creatures & Bosses Slayed">
+            <span class="l-stat-val" style="color:var(--gold-bright)">⚔️ ${p.kills}</span>
+            <span class="l-stat-lbl">Kills</span>
+          </div>
+          <div class="l-stat-item" title="Deaths in battle">
+            <span class="l-stat-val" style="color:var(--red)">💀 ${p.deaths}</span>
+            <span class="l-stat-lbl">Deaths</span>
+          </div>
+          <div class="l-stat-item" title="Kill / Death Ratio">
+            <span class="l-stat-val">⚖️ ${p.kdRatio}</span>
+            <span class="l-stat-lbl">K/D</span>
+          </div>
+          <div class="l-stat-item" title="Structures Built">
+            <span class="l-stat-val">🔨 ${p.builds}</span>
+            <span class="l-stat-lbl">Built</span>
+          </div>
+          <div class="l-stat-item" title="Resources Mined">
+            <span class="l-stat-val">⛏️ ${p.harvests}</span>
+            <span class="l-stat-lbl">Mined</span>
+          </div>
+        </div>
+
+        <div class="leader-action">
+          <button class="btn-chronicle" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(p.name)}')">
+            📜 Chronicle ▾
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterLeaderboard() {
+  if (!rawLeaderboardData || !Array.isArray(rawLeaderboardData.players)) return;
+  const q = (document.getElementById('leaderSearchInput')?.value || '').trim().toLowerCase();
+  let filtered = rawLeaderboardData.players.slice();
+  if (q) {
+    filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
+  }
+  sortAndRenderFiltered(filtered);
+}
+
+function sortLeaderboard() {
+  if (!rawLeaderboardData || !Array.isArray(rawLeaderboardData.players)) return;
+  filterLeaderboard();
+}
+
+function sortAndRenderFiltered(list) {
+  const sortKey = document.getElementById('leaderSortSelect')?.value || 'score';
+  list.sort((a, b) => {
+    if (sortKey === 'uptime') return b.uptimeMs - a.uptimeMs;
+    if (sortKey === 'kills') return b.kills - a.kills;
+    if (sortKey === 'deaths') return b.deaths - a.deaths;
+    if (sortKey === 'builds') return b.builds - a.builds;
+    if (sortKey === 'harvests') return b.harvests - a.harvests;
+    return b.score - a.score || b.uptimeMs - a.uptimeMs;
+  });
+  renderLeaderboardList(list);
+}
+
+async function openPlayerModal(playerName) {
+  const modal = document.getElementById('playerStatsModal');
+  if (!modal) return;
+
+  currentChroniclePlayer = playerName;
+  modal.classList.remove('hidden');
+
+  // Set loading placeholder
+  document.getElementById('modalPlayerName').textContent = playerName;
+  document.getElementById('modalPlayerUptime').textContent = '...';
+  document.getElementById('modalPlayerKills').textContent = '...';
+  document.getElementById('modalPlayerDeaths').textContent = '...';
+  document.getElementById('modalPlayerKd').textContent = '...';
+  document.getElementById('modalPlayerBuilds').textContent = '...';
+  document.getElementById('modalPlayerHarvests').textContent = '...';
+  document.getElementById('modalKillsBreakdown').innerHTML = '<span>Consulting runestones...</span>';
+  document.getElementById('modalBuildsBreakdown').innerHTML = '<span>Consulting runestones...</span>';
+  document.getElementById('modalHarvestsBreakdown').innerHTML = '<span>Consulting runestones...</span>';
+  document.getElementById('modalRecentEvents').innerHTML = '<span>Loading saga...</span>';
+
+  try {
+    const res = await apiFetch(`/api/leaderboard/player/${encodeURIComponent(playerName)}`);
+    if (!res.ok) throw new Error('Player stats not found');
+    const p = await res.json();
+    populatePlayerModal(p);
+  } catch (err) {
+    document.getElementById('modalRecentEvents').innerHTML = `<span style="color:var(--red)">${err.message}</span>`;
+  }
+}
+
+function populatePlayerModal(p) {
+  document.getElementById('modalPlayerName').textContent = p.name;
+  const isOnline = p.status === 'online';
+  const statusEl = document.getElementById('modalPlayerStatus');
+  if (statusEl) {
+    statusEl.textContent = isOnline ? 'Online Now' : 'Offline';
+    statusEl.className = `status-pill ${isOnline ? 'online' : 'offline'}`;
+  }
+
+  // Titles
+  const rankBadge = document.getElementById('modalPlayerRankBadge');
+  if (rankBadge) {
+    let title = 'Viking Explorer';
+    if (p.kills >= 50) title = 'Legendary Berserker';
+    else if (p.kills >= 20) title = 'Beast Slayer';
+    else if (p.builds >= 30) title = 'Master Architect';
+    else if (p.harvests >= 30) title = 'Grand Prospector';
+    else if (p.deaths >= 15) title = 'Survivor of Valhalla';
+    rankBadge.textContent = `${title} • ${p.sessionCount || 1} Journeys`;
+  }
+
+  // Numbers
+  document.getElementById('modalPlayerUptime').textContent = p.uptimeFormatted;
+  document.getElementById('modalPlayerKills').textContent = p.kills;
+  document.getElementById('modalPlayerDeaths').textContent = p.deaths;
+  document.getElementById('modalPlayerKd').textContent = p.kdRatio;
+  document.getElementById('modalPlayerBuilds').textContent = p.builds;
+  document.getElementById('modalPlayerHarvests').textContent = p.harvests;
+
+  // Location Card
+  const locCard = document.getElementById('modalPlayerLocationCard');
+  const locCoords = document.getElementById('modalPlayerCoords');
+  if (p.lastLocation) {
+    locCoords.textContent = p.lastLocation;
+    locCard.classList.remove('hidden');
+  } else {
+    locCard.classList.add('hidden');
+  }
+
+  // Kills breakdown chips
+  const killsEl = document.getElementById('modalKillsBreakdown');
+  const killEntries = Object.entries(p.killsBreakdown || {});
+  if (killEntries.length > 0) {
+    killsEl.innerHTML = killEntries.map(([target, count]) => `
+      <span class="breakdown-chip kill-chip">
+        <span class="chip-label">⚔️ ${escapeHtml(target)}</span>
+        <span class="chip-count">x${count}</span>
+      </span>
+    `).join('');
+  } else {
+    killsEl.innerHTML = '<span class="empty-chip-note">No creatures recorded in combat yet.</span>';
+  }
+
+  // Last death cause
+  const lastDeathRow = document.getElementById('modalLastDeathRow');
+  const lastDeathCause = document.getElementById('modalLastDeathCause');
+  if (p.lastDeathCause) {
+    lastDeathCause.textContent = `${p.lastDeathCause}${p.lastDeathLocation ? ` (at ${p.lastDeathLocation})` : ''}`;
+    lastDeathRow.classList.remove('hidden');
+  } else {
+    lastDeathRow.classList.add('hidden');
+  }
+
+  // Builds breakdown chips
+  const buildsEl = document.getElementById('modalBuildsBreakdown');
+  const buildEntries = Object.entries(p.buildsBreakdown || {});
+  if (buildEntries.length > 0) {
+    buildsEl.innerHTML = buildEntries.map(([item, count]) => `
+      <span class="breakdown-chip build-chip">
+        <span class="chip-label">🔨 ${escapeHtml(item)}</span>
+        <span class="chip-count">x${count}</span>
+      </span>
+    `).join('');
+  } else {
+    buildsEl.innerHTML = '<span class="empty-chip-note">No structures placed yet.</span>';
+  }
+
+  // Harvests breakdown chips
+  const harvestsEl = document.getElementById('modalHarvestsBreakdown');
+  const harvestEntries = Object.entries(p.harvestsBreakdown || {});
+  if (harvestEntries.length > 0) {
+    harvestsEl.innerHTML = harvestEntries.map(([resource, count]) => `
+      <span class="breakdown-chip harvest-chip">
+        <span class="chip-label">⛏️ ${escapeHtml(resource)}</span>
+        <span class="chip-count">x${count}</span>
+      </span>
+    `).join('');
+  } else {
+    harvestsEl.innerHTML = '<span class="empty-chip-note">No raw resources harvested yet.</span>';
+  }
+
+  // Recent timeline
+  const recentEl = document.getElementById('modalRecentEvents');
+  const events = p.recentEvents || [];
+  if (events.length > 0) {
+    recentEl.innerHTML = events.map(e => `
+      <div class="m-event-item">
+        <span class="m-event-time">${e.dateStr || ''}</span>
+        <span class="m-event-title ${e.severity || 'info'}">${escapeHtml(e.title || 'Event')}</span>
+        <span class="m-event-details">${escapeHtml(e.details || '')}</span>
+        ${e.location ? `<span class="m-event-loc">📍 ${escapeHtml(e.location)}</span>` : ''}
+      </div>
+    `).join('');
+  } else {
+    recentEl.innerHTML = '<span class="empty-chip-note">No recent logged actions.</span>';
+  }
+}
+
+function switchChronicleTab(tab) {
+  const btnCombat = document.getElementById('cNavCombat');
+  const btnEng = document.getElementById('cNavEngineering');
+  const btnHist = document.getElementById('cNavHistory');
+  const paneCombat = document.getElementById('cTabCombat');
+  const paneEng = document.getElementById('cTabEngineering');
+  const paneHist = document.getElementById('cTabHistory');
+
+  if (btnCombat) btnCombat.classList.toggle('active', tab === 'combat');
+  if (btnEng) btnEng.classList.toggle('active', tab === 'engineering');
+  if (btnHist) btnHist.classList.toggle('active', tab === 'history');
+
+  if (paneCombat) paneCombat.classList.toggle('hidden', tab !== 'combat');
+  if (paneEng) paneEng.classList.toggle('hidden', tab !== 'engineering');
+  if (paneHist) paneHist.classList.toggle('hidden', tab !== 'history');
+}
+
+function closePlayerModal(e) {
+  if (e && e.target && e.target.classList.contains('warrior-chronicle-modal')) return;
+  const modal = document.getElementById('playerStatsModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function copyModalCoords() {
+  const coords = document.getElementById('modalPlayerCoords')?.textContent || '';
+  if (coords) {
+    navigator.clipboard.writeText(coords).then(() => {
+      showToast(`Coordinates copied: ${coords}`);
+    }).catch(() => {
+      showToast(coords);
+    });
+  }
 }
 
 // ─── Bootstrap ───────────────────────────────────────────────────────────────

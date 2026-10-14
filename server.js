@@ -691,6 +691,27 @@ app.get('/api/activity/export', requireAdmin, (req, res) => {
   }
 });
 
+// ─── GET /api/leaderboard (Public Leaderboard — accessible to all) ────────────
+app.get('/api/leaderboard', (req, res) => {
+  try {
+    const data = activityTracker.getLeaderboard();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/leaderboard/player/:name (Public Player Custom Stats) ───────────
+app.get('/api/leaderboard/player/:name', (req, res) => {
+  try {
+    const stats = activityTracker.getPlayerStats(req.params.name);
+    if (!stats) return res.status(404).json({ error: 'Player not found in realm chronicle' });
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── POST /api/webhook/discord (DiscordConnector / Mod Ingestion) ────────────
 app.post('/api/webhook/discord', (req, res) => {
   try {
@@ -698,6 +719,7 @@ app.post('/api/webhook/discord', (req, res) => {
     let message = payload.content || '';
     let author = payload.username || 'Valheim';
     let title = '';
+    let location = null;
 
     if (Array.isArray(payload.embeds) && payload.embeds.length > 0) {
       const embed = payload.embeds[0];
@@ -707,6 +729,16 @@ app.post('/api/webhook/discord', (req, res) => {
       }
       if (embed.author && embed.author.name) {
         author = embed.author.name;
+      }
+      // Check embed fields for coordinates/location
+      if (Array.isArray(embed.fields)) {
+        for (const f of embed.fields) {
+          const fn = (f.name || '').toLowerCase();
+          const fv = (f.value || '').trim();
+          if (fn.includes('pos') || fn.includes('loc') || fn.includes('coord')) {
+            location = fv;
+          }
+        }
       }
     }
 
@@ -721,6 +753,7 @@ app.post('/api/webhook/discord', (req, res) => {
         rawMessage: cleanMsg,
         author,
         title: title || 'DiscordConnector',
+        location,
         raw: JSON.stringify(payload).slice(0, 300)
       });
     }

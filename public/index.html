@@ -92,9 +92,13 @@
           <span class="tab-icon">⚙</span>
           <span class="tab-text">DASHBOARD</span>
         </button>
+        <button class="nav-tab" id="tabBtnLeaderboard" onclick="switchTab('leaderboard')">
+          <span class="tab-icon">🏆</span>
+          <span class="tab-text">LEADER BOARD</span>
+        </button>
         <button class="nav-tab" id="tabBtnActivity" onclick="switchTab('activity')">
           <span class="tab-icon">🛡</span>
-          <span class="tab-text">USER ACTIVITY</span>
+          <span class="tab-text">USER ACTIVITIES</span>
           <span class="tab-badge-alert hidden" id="suspiciousNavBadge">0</span>
         </button>
       </div>
@@ -245,6 +249,72 @@
           <div class="log-footer">
             <span id="logCount" class="log-count">0 lines</span>
             <span class="log-stream-status" id="logStreamStatus">● Connecting</span>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ══════════ TAB: LEADER BOARD ══════════ -->
+      <div id="tabContentLeaderboard" class="tab-pane">
+
+        <!-- Hall of Champions Podium -->
+        <section class="panel leaderboard-podium-panel">
+          <div class="panel-header">
+            <div class="panel-header-title">
+              <h2 class="panel-title">
+                <span class="panel-icon">🏆</span> Hall of Champions
+              </h2>
+              <span class="panel-subtitle">Realm legends, combat masters, master builders, and survival records</span>
+            </div>
+            <div class="leaderboard-top-actions">
+              <button class="btn-secondary" onclick="loadLeaderboard()">
+                ↺ Refresh Leaderboard
+              </button>
+            </div>
+          </div>
+
+          <div class="podium-grid" id="leaderboardPodium">
+            <div class="podium-card loading-podium">
+              <div class="spinner"></div>
+              <span>Gathering warrior chronicles...</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Main Leaderboard Rankings -->
+        <section class="panel leaderboard-table-panel">
+          <div class="panel-header">
+            <div class="panel-header-title">
+              <h2 class="panel-title">
+                <span class="panel-icon">⚔</span> Viking Leaderboard
+              </h2>
+              <span class="panel-subtitle">Tracking player uptime, creature kills, fatal falls, structures placed, and realm locations</span>
+            </div>
+            <div class="leaderboard-controls">
+              <div class="leader-search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="leaderSearchInput" placeholder="Filter warrior name..." oninput="filterLeaderboard()" />
+              </div>
+              <div class="leader-sort-group">
+                <label for="leaderSortSelect">Sort By:</label>
+                <select id="leaderSortSelect" class="filter-select" onchange="sortLeaderboard()">
+                  <option value="score">Overall Glory Score</option>
+                  <option value="uptime">Uptime / Playtime</option>
+                  <option value="kills">Creatures Slayed</option>
+                  <option value="deaths">Fatal Falls / Deaths</option>
+                  <option value="builds">Structures Built</option>
+                  <option value="harvests">Resources Mined</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leaderboard Cards / Table List -->
+          <div id="leaderboardList" class="leaderboard-cards-container">
+            <div class="players-loading">
+              <div class="spinner"></div>
+              <span>Summoning Viking warriors...</span>
+            </div>
           </div>
         </section>
 
@@ -430,6 +500,110 @@
           </div>
         </section>
 
+      </div>
+
+      <!-- ══════════ MODAL: VIKING CHRONICLE & CUSTOM STATS ══════════ -->
+      <div id="playerStatsModal" class="modal-overlay hidden" onclick="closePlayerModal(event)">
+        <div class="modal-card warrior-chronicle-modal" onclick="event.stopPropagation()">
+          <button class="modal-close-btn" onclick="closePlayerModal()">✕</button>
+          
+          <div class="chronicle-header">
+            <div class="chronicle-avatar" id="modalPlayerAvatar">⚔</div>
+            <div class="chronicle-hero-info">
+              <div class="chronicle-name-row">
+                <h2 class="chronicle-name" id="modalPlayerName">Warrior Name</h2>
+                <span class="status-pill online" id="modalPlayerStatus">Online</span>
+              </div>
+              <span class="chronicle-title-badge" id="modalPlayerRankBadge">Champion of the Realm</span>
+            </div>
+          </div>
+
+          <div class="chronicle-stats-grid">
+            <div class="chronicle-stat-box">
+              <span class="c-stat-icon">⏳</span>
+              <div class="c-stat-details">
+                <span class="c-stat-value" id="modalPlayerUptime">0h</span>
+                <span class="c-stat-label">Total Uptime</span>
+              </div>
+            </div>
+            <div class="chronicle-stat-box">
+              <span class="c-stat-icon">⚔️</span>
+              <div class="c-stat-details">
+                <span class="c-stat-value" id="modalPlayerKills">0</span>
+                <span class="c-stat-label">Creatures Slayed</span>
+              </div>
+            </div>
+            <div class="chronicle-stat-box">
+              <span class="c-stat-icon">💀</span>
+              <div class="c-stat-details">
+                <span class="c-stat-value" id="modalPlayerDeaths">0</span>
+                <span class="c-stat-label">Fallen in Battle</span>
+              </div>
+            </div>
+            <div class="chronicle-stat-box">
+              <span class="c-stat-icon">⚖️</span>
+              <div class="c-stat-details">
+                <span class="c-stat-value" id="modalPlayerKd">0.0</span>
+                <span class="c-stat-label">K/D Ratio</span>
+              </div>
+            </div>
+            <div class="chronicle-stat-box">
+              <span class="c-stat-icon">🔨</span>
+              <div class="c-stat-details">
+                <span class="c-stat-value" id="modalPlayerBuilds">0</span>
+                <span class="c-stat-label">Structures Built</span>
+              </div>
+            </div>
+            <div class="chronicle-stat-box">
+              <span class="c-stat-icon">⛏️</span>
+              <div class="c-stat-details">
+                <span class="c-stat-value" id="modalPlayerHarvests">0</span>
+                <span class="c-stat-label">Resources Mined</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Location banner if available -->
+          <div id="modalPlayerLocationCard" class="location-banner hidden">
+            <span class="loc-icon">📍</span>
+            <div class="loc-info">
+              <span class="loc-label">LAST KNOWN REALM COORDINATES</span>
+              <span class="loc-coords" id="modalPlayerCoords">(0, 0, 0)</span>
+            </div>
+            <button class="btn-copy-coords" onclick="copyModalCoords()" title="Copy coordinates">📋 Copy Coordinates</button>
+          </div>
+
+          <!-- Detailed Breakdown Tabs -->
+          <div class="chronicle-tabs-nav">
+            <button class="c-nav-btn active" id="cNavCombat" onclick="switchChronicleTab('combat')">⚔️ Combat Record</button>
+            <button class="c-nav-btn" id="cNavEngineering" onclick="switchChronicleTab('engineering')">🔨 Construction & Mining</button>
+            <button class="c-nav-btn" id="cNavHistory" onclick="switchChronicleTab('history')">📜 Recent Saga</button>
+          </div>
+
+          <div class="chronicle-body">
+            <div id="cTabCombat" class="c-tab-pane active">
+              <h4 class="c-section-heading">Creatures & Bosses Slayed</h4>
+              <div id="modalKillsBreakdown" class="breakdown-chips-grid"></div>
+              <div id="modalLastDeathRow" class="last-death-info hidden">
+                <span class="death-warn-icon">💀</span>
+                <span><strong>Last Cause of Death:</strong> <span id="modalLastDeathCause">Unknown</span></span>
+              </div>
+            </div>
+
+            <div id="cTabEngineering" class="c-tab-pane hidden">
+              <h4 class="c-section-heading">Structures Erected</h4>
+              <div id="modalBuildsBreakdown" class="breakdown-chips-grid"></div>
+              <h4 class="c-section-heading" style="margin-top: 15px;">Resources Mined / Harvested</h4>
+              <div id="modalHarvestsBreakdown" class="breakdown-chips-grid"></div>
+            </div>
+
+            <div id="cTabHistory" class="c-tab-pane hidden">
+              <h4 class="c-section-heading">Recent Viking Activity Log</h4>
+              <div id="modalRecentEvents" class="modal-events-timeline"></div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
     </main>
