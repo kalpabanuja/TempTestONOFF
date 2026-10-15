@@ -220,9 +220,9 @@ function startLogWatcher() {
 
   console.log(`[watcher] Starting log watcher for container: ${VALHEIM_CONTAINER}`);
 
-  // Backfill recent logs on watcher startup into activity tracker
+  // Backfill recent logs on watcher startup into activity tracker (with timestamps for accurate intervals)
   exec(
-    `docker logs --tail 2500 ${VALHEIM_CONTAINER} 2>&1`,
+    `docker logs --tail 2500 --timestamps ${VALHEIM_CONTAINER} 2>&1`,
     { maxBuffer: 10 * 1024 * 1024 },
     (err, stdout) => {
       if (stdout) activityTracker.backfillLogs(stdout);
@@ -416,15 +416,35 @@ app.get('/api/status', requireAuth, async (req, res) => {
 app.post('/api/server/start', requireAuth, async (req, res) => {
   try {
     await dockerCmd(`start ${VALHEIM_CONTAINER}`);
+    setTimeout(() => {
+      startLogWatcher();
+    }, 2000);
     res.json({ success: true, message: 'Server starting...' });
   } catch (err) {
-    res.status(500).json({ error: err });
+    console.warn('[server] docker start failed, trying docker restart fallback:', err);
+    try {
+      await dockerCmd(`restart ${VALHEIM_CONTAINER}`);
+      setTimeout(() => {
+        startLogWatcher();
+      }, 2000);
+      res.json({ success: true, message: 'Server recovered and started.' });
+    } catch (restartErr) {
+      res.status(500).json({ error: restartErr.toString() });
+    }
   }
 });
 
 // ─── POST /api/server/stop ────────────────────────────────────────────────────
 app.post('/api/server/stop', requireAuth, async (req, res) => {
   try {
+    const now = Date.now();
+    activityTracker.handleServerShutdown(now);
+    liveState.playerCount = 0;
+    liveState.players = [];
+    liveState.joinCode = null;
+    liveState.lastEvent = 'server_stop';
+    broadcastInfo();
+
     await dockerCmd(`stop ${VALHEIM_CONTAINER}`);
     res.json({ success: true, message: 'Server stopped.' });
   } catch (err) {
@@ -435,7 +455,17 @@ app.post('/api/server/stop', requireAuth, async (req, res) => {
 // ─── POST /api/server/restart ─────────────────────────────────────────────────
 app.post('/api/server/restart', requireAuth, async (req, res) => {
   try {
+    const now = Date.now();
+    activityTracker.handleServerShutdown(now);
+    liveState.playerCount = 0;
+    liveState.players = [];
+    liveState.lastEvent = 'server_restart';
+    broadcastInfo();
+
     await dockerCmd(`restart ${VALHEIM_CONTAINER}`);
+    setTimeout(() => {
+      startLogWatcher();
+    }, 2000);
     res.json({ success: true, message: 'Server restarting...' });
   } catch (err) {
     res.status(500).json({ error: err });
