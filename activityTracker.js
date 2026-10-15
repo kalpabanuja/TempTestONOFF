@@ -43,23 +43,50 @@ function extractLocation(text) {
 // Helper: Validate whether a string is a genuine player character name
 function isValidPlayer(name) {
   if (!name || typeof name !== 'string') return false;
-  const lower = name.toLowerCase().trim();
-  if (lower.length < 2) return false;
+  const clean = name.trim();
+  const lower = clean.toLowerCase();
+  if (lower.length < 2 || lower.length > 30) return false;
+
+  // Strict blacklist of non-player / system / event / mod identifiers
   if (
     lower === 'server' ||
     lower === 'valheim' ||
     lower === 'mod' ||
     lower === 'discordconnector' ||
+    lower === 'discord' ||
     lower === 'system' ||
     lower === 'world' ||
+    lower === 'event' ||
+    lower === 'events' ||
+    lower === 'raid' ||
+    lower === 'raids' ||
     lower === 'security alert' ||
     lower === 'security system' ||
     lower === 'connected viking' ||
     lower === '0:0' ||
     lower === '<null>' ||
+    lower === 'null' ||
+    lower === 'undefined' ||
+    lower === 'unknown' ||
+    lower === 'error' ||
+    lower === 'warn' ||
+    lower === 'warning' ||
+    lower === 'info' ||
+    lower === 'notice' ||
+    lower === 'day' ||
+    lower === 'days' ||
+    lower === 'backup' ||
+    lower === 'bepinex' ||
+    lower === 'network' ||
+    lower === 'admin' ||
+    lower === 'administrator' ||
+    lower === 'console' ||
+    lower === 'broadcast' ||
     lower.startsWith('playfab/') ||
     lower.startsWith('steam/') ||
-    lower.startsWith('client (')
+    lower.startsWith('client (') ||
+    lower.startsWith('event:') ||
+    lower.startsWith('world event:')
   ) {
     return false;
   }
@@ -138,7 +165,7 @@ class ActivityTracker {
         this.events = Array.isArray(data.events) ? data.events : [];
         this.players = typeof data.players === 'object' && data.players !== null ? data.players : {};
 
-        // Scrub corrupted, dummy, or dirty players (e.g. 'Test has', 'Mod', internal tags)
+        // Scrub corrupted, dummy, or dirty players (e.g. 'EVENT', 'Test has', 'Mod', internal tags)
         for (const [key, val] of Object.entries(this.players)) {
           const cleaned = cleanPlayerName(key);
           if (!isValidPlayer(cleaned) || cleaned !== key) {
@@ -150,10 +177,13 @@ class ActivityTracker {
           }
         }
 
-        // Clean any trailing 'has' in past event player names
+        // Clean past event player names and attribute system/event logs to 'World'
         for (const evt of this.events) {
           if (evt.player) {
             evt.player = cleanPlayerName(evt.player);
+            if (!isValidPlayer(evt.player) && evt.player !== 'Server' && evt.player !== 'Mod') {
+              evt.player = 'World';
+            }
           }
         }
 
@@ -589,6 +619,10 @@ class ActivityTracker {
       }
 
       // Case B: Character Spawn or Respawn
+      if (!isValidPlayer(name)) {
+        return null;
+      }
+
       if (peerId && peerId !== '0') {
         this.peerToName.set(peerId, name);
       }
@@ -1025,14 +1059,18 @@ class ActivityTracker {
       }
     }
 
-    // 9. World Event / Raid phrases
-    if (/forest is moving|foul smell|cold wind|ground is shaking|army of|skeleton surprise|hunt/i.test(text)) {
+    // 9. World Event / Raid phrases or DiscordConnector Event prefix
+    const eventPrefixMatch = text.match(/^(?:world\s+)?event:\s*(.+)/i);
+    const raidRegex = /forest is moving|foul smell|cold wind|ground is shaking|army of|skeleton surprise|hunt|cauldron|sulfur|snowstorm|swarm|horde|what's up dog|event is paused|event has ended/i;
+
+    if (eventPrefixMatch || raidRegex.test(text)) {
+      const eventDetails = eventPrefixMatch ? eventPrefixMatch[1].trim() : text;
       return this.recordEvent({
         player: 'World',
         type: 'action',
         severity: 'warn',
-        title: 'Raid Event',
-        details: withLoc(text),
+        title: 'World Event / Raid',
+        details: withLoc(eventDetails),
         location,
         raw,
         timestamp,
@@ -1041,7 +1079,7 @@ class ActivityTracker {
 
     // 10. Chat / Shout — comes LAST so specific action patterns above get priority
     const chatMatch = text.match(/^(.+?)\s+(?:shouts|says|whispers):\s*(.+)/i) ||
-                      text.match(/^(.+?):\s+"?(.+?)"?$/i);
+                      text.match(/^([A-Za-z0-9_\-\s]{2,25}):\s+"?(.+?)"?$/i);
     if (chatMatch) {
       const player = cleanPlayerName(chatMatch[1]);
       const chat = chatMatch[2].trim();
@@ -1247,6 +1285,28 @@ class ActivityTracker {
 
     const now = Date.now();
 
+    // Purge any invalid players (like EVENT, World, Mod, etc.) from players list and active online set
+    for (const pName of Object.keys(this.players)) {
+      const clean = cleanPlayerName(pName);
+      if (!isValidPlayer(clean) || clean !== pName) {
+        delete this.players[pName];
+        if (isValidPlayer(clean) && !this.players[clean]) {
+          this.players[clean] = { name: clean };
+        }
+      }
+    }
+    this.currentlyOnline = new Set(Array.from(this.currentlyOnline).filter((n) => isValidPlayer(n)));
+
+    // Clean past event players: re-attribute non-player event lines to 'World'
+    for (const e of this.events) {
+      if (e.player) {
+        e.player = cleanPlayerName(e.player);
+        if (!isValidPlayer(e.player) && e.player !== 'Server' && e.player !== 'Mod') {
+          e.player = 'World';
+        }
+      }
+    }
+
     // Reset counters and uptime for every known player
     for (const p of Object.values(this.players)) {
       this.resetPlayerRecord(p);
@@ -1357,7 +1417,9 @@ class ActivityTracker {
   // Get full leaderboard data (Public & Admin)
   getLeaderboard() {
     const now = Date.now();
-    const playersList = Object.values(this.players).map((p) => {
+    const playersList = Object.values(this.players)
+      .filter((p) => p && isValidPlayer(p.name))
+      .map((p) => {
       this.ensurePlayerStats(p);
       let uptimeMs = p.totalUptimeMs || 0;
       const isOnline = (this.currentlyOnline && this.currentlyOnline.has(p.name));
@@ -1435,8 +1497,9 @@ class ActivityTracker {
 
   // Get deep custom stats for a specific player (Public)
   getPlayerStats(name) {
-    if (!name) return null;
+    if (!name || !isValidPlayer(name)) return null;
     const cleanName = cleanPlayerName(name);
+    if (!isValidPlayer(cleanName)) return null;
     const p = this.players[cleanName];
     if (!p) return null;
 
